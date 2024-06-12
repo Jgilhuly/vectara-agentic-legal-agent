@@ -4,6 +4,7 @@ WORKDIR /app
 
 COPY ./requirements.txt /app/requirements.txt
 
+ARG GITHUB_TOKEN
 RUN if [ -z "$GITHUB_TOKEN" ]; then echo "GITHUB_TOKEN is not set"; exit 1; fi && \
     sed -i "s/{GITHUB_TOKEN}/$GITHUB_TOKEN/g" /app/requirements.txt
 

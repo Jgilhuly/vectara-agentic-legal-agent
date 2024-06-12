@@ -4,10 +4,11 @@ WORKDIR /app
 
 COPY ./requirements.txt /app/requirements.txt
 
-RUN echo $GITHUB_TOKEN
-
 RUN if [ -z "$GITHUB_TOKEN" ]; then echo "GITHUB_TOKEN is not set"; exit 1; fi && \
     sed -i "s/{GITHUB_TOKEN}/$GITHUB_TOKEN/g" /app/requirements.txt
+
+RUN cat /app/requirements.txt
+
 RUN pip3 install --no-cache-dir -r /app/requirements.txt
 
 # User

@@ -164,7 +164,7 @@ def launch_bot(agent_type: AgentType):
             with st.spinner(st.session_state.thinking_message):
                 st.session_state.thinking_placeholder = st.empty()
                 res = st.session_state.agent.chat(prompt)
-                cleaned = re.sub(r'\[\d+\]', '', res.response).replace('$', '\\$')
+                cleaned = re.sub(r'\[\d+\]', '', res).replace('$', '\\$')
                 st.write(cleaned)
             message = {"role": "assistant", "content": cleaned, "avatar": '🤖'}
             st.session_state.messages.append(message)

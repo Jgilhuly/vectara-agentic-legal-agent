@@ -1,5 +1,5 @@
 ---
-title: Finance Chatbot
+title: Finance Chatbot (vectara-agent)
 emoji: 🐨
 colorFrom: indigo
 colorTo: indigo

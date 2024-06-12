@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY ./requirements.txt /app/requirements.txt
 
-RUN --mount=type=secret,id=GITHUB_OKEN,mode=0444,required=true \
+RUN --mount=type=secret,id=GITHUB_TOKEN,mode=0444,required=true \
     if [ -z "$GITHUB_TOKEN" ]; then echo "GITHUB_TOKEN is not set"; exit 1; fi && \
     sed -i "s/{GITHUB_TOKEN}/$GITHUB_TOKEN/g" /app/requirements.txt
 

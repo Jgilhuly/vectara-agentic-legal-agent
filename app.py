@@ -5,6 +5,7 @@ import os
 from PIL import Image
 import re
 import sys
+import datetime
 
 from pydantic import Field, BaseModel
 from vectara_agent.agent import Agent, AgentType, AgentStatusType
@@ -79,16 +80,15 @@ def create_tools(cfg):
 
 @st.cache_resource
 def initialize_agent(agent_type: AgentType, _cfg):
-    financial_bot_instructions = """
-    - You are a helpful financial assistant in conversation with a user. 
-    - Use your financial expertise when crafting a query to the tool, to ensure you get the most accurate responses.
-    - A user may refer to a company's ticker instead of its full name - consider those the same when a user is asking about a company.
-    - When using a query tool for a metric, make sure to provide the correct ticker and year and concise definition of the metric to avoid ambiguity.
-    - Use tools when available instead of depending on your own knowledge, and consider the field descriptions carefully.
+    date = datetime.datetime.now().strftime("%Y-%m-%d")
+    financial_bot_instructions = f"""
+    - You are a helpful financial assistant, with expertise in finanal reporting, in conversation with a user. 
+    - Today's date is {date}.
+    - Report in a concise and clear manner, and provide the most relevant information to the user.
+    - Respond in a concise format by using appropriate units of measure (e.g., K for thousands, M for millions, B for billions). 
+    - Use tools when available instead of depending on your own knowledge.
     - If you calculate a metric, make sure you have all the necessary information to complete the calculation. Don't guess.
-    - Report financial data in a consistent manner. For example if you report revenue in thousands, always report revenue in thousands.
     - Be very careful not to report results you are not confident about.
-    - Report results in the most relevant multiple. For example, revenues in millions, not thousands.
     """
 
     def update_func(status_type: AgentStatusType, msg: str):
@@ -129,8 +129,7 @@ def launch_bot(agent_type: AgentType):
         st.markdown("## Welcome to the financial assistant demo.\n\n\n")
         companies = ", ".join(tickers.values())
         st.markdown(
-            f"This assistant can help you with any questions about the financials of the following companies:\n\n **{companies}**.\n\n"
-            "You can ask questions, analyze data, provide insights, or summarize any information from financial reports."
+            f"This assistant can help you with any questions about the financials of several companies:\n\n **{companies}**.\n"
         )
 
         st.markdown("\n\n")

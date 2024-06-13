@@ -88,6 +88,7 @@ def initialize_agent(agent_type: AgentType, _cfg):
     - Report in a concise and clear manner, and provide the most relevant information to the user.
     - Respond in a concise format by using appropriate units of measure (e.g., K for thousands, M for millions, B for billions). 
     - Use tools when available instead of depending on your own knowledge.
+    - When querying a tool for a numeric value or KPI, use a concise and non-ambiguous description of what you are looking for. 
     - If you calculate a metric, make sure you have all the necessary information to complete the calculation. Don't guess.
     - Be very careful not to report results you are not confident about.
     """

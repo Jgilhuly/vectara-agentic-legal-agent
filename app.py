@@ -165,10 +165,10 @@ def launch_bot(agent_type: AgentType):
                 st.session_state.thinking_placeholder = st.empty()
                 res = st.session_state.agent.chat(prompt)
                 cleaned = re.sub(r'\[\d+\]', '', res).replace('$', '\\$')
-                st.write(cleaned)
             message = {"role": "assistant", "content": cleaned, "avatar": '🤖'}
             st.session_state.messages.append(message)
             st.session_state.thinking_placeholder.empty()
+            st.rerun()
 
     sys.stdout.flush()
 

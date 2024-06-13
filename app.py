@@ -21,6 +21,8 @@ tickers = {
     "NVDA": "Nvidia",
     "MSFT": "Microsoft",
     "AMD": "Advanced Micro Devices",
+    "INTC": "Intel",
+    "NFLX": "Netflix",
 }
 years = [2020, 2021, 2022, 2023, 2024]
 initial_prompt = "How can I help you today?"

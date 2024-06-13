@@ -44,7 +44,7 @@ def create_tools(cfg):
         return years
     
     class QueryFinancialReportsArgs(BaseModel):
-        query: str = Field(..., description="The user query. Must be a question about the company's financials, and should not include the company name, ticker or year.")
+        query: str = Field(..., description="The user query.")
         year: int = Field(..., description=f"The year. an integer between {min(years)} and {max(years)}.")
         ticker: str = Field(..., description=f"The company ticker. Must be a valid ticket symbol from the list {tickers.keys()}.")
 
@@ -55,15 +55,14 @@ def create_tools(cfg):
         tool_name = "query_financial_reports",
         tool_description = """
         Given a company name and year, 
-        returns a response (str) to a user query about the company's financials for that year.
-        When using this tool, make sure to provide the a valid company ticker and a year. 
-        Use this tool to get financial information one metric at a time.
+        returns a response (str) to a user query about the company's financial reports for that year.
+        make sure to provide the a valid company ticker and year.
         """,
         tool_args_schema = QueryFinancialReportsArgs,
         tool_filter_template = "doc.year = {year} and doc.ticker = '{ticker}'",
-        reranker = "slingshot", rerank_k = 100, 
-        n_sentences_before = 2, n_sentences_after = 2, lambda_val = 0.0,
-        summary_num_results = 15,
+        reranker = "multilingual_reranker_v1", rerank_k = 100, 
+        n_sentences_before = 2, n_sentences_after = 2, lambda_val = 0.01,
+        summary_num_results = 10,
         vectara_summarizer = 'vectara-summary-ext-24-05-med-omni',
     )
 
@@ -92,19 +91,20 @@ def launch_bot(agent_type: AgentType):
             st.session_state.thinking_placeholder.text(output)
 
         financial_bot_instructions = """
-        - You are a helpful financial assistant in conversation with a user. Use your financial expertise when crafting a query to the tool, to ensure you get the most accurate information.
-        - You can answer questions, provide insights, or summarize any information from financial reports.
+        - You are a helpful financial assistant in conversation with a user. 
+        - Use your financial expertise when crafting a query to the tool, to ensure you get the most accurate responses.
         - A user may refer to a company's ticker instead of its full name - consider those the same when a user is asking about a company.
-        - When calculating a financial metric, make sure you have all the information from tools to complete the calculation.
-        - In many cases you may need to query tools on each sub-metric separately before computing the final metric.
-        - When using a tool to obtain financial data, consider the fact that information for a certain year may be reported in the the following year's report.
+        - When using a query tool for a metric, make sure to provide the correct ticker and year and concise definition of the metric to avoid ambiguity.
+        - Use tools when available instead of depending on your own knowledge, and consider the field descriptions carefully.
+        - If you calculate a metric, make sure you have all the necessary information to complete the calculation. Don't guess.
         - Report financial data in a consistent manner. For example if you report revenue in thousands, always report revenue in thousands.
+        - Be very careful not to report results you are not confident about.
+        - Report results in the most relevant multiple. For example, reveuues in millions, not thousands.
         """
-
         st.session_state.agent = Agent(
             agent_type = agent_type,
             tools = create_tools(cfg),
-            topic = "10-K financial reports",
+            topic = "10-K annual financial reports",
             custom_instructions = financial_bot_instructions,
             update_func = update_func
         )

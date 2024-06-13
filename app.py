@@ -75,6 +75,7 @@ def create_tools(cfg):
             ) +
             tools_factory.standard_tools() + 
             tools_factory.financial_tools() + 
+            tools_factory.guardrail_tools() +
             [query_financial_reports]
     )
 

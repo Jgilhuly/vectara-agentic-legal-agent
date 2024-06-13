@@ -77,38 +77,41 @@ def create_tools(cfg):
             [query_financial_reports]
     )
 
+@st.cache_resource
+def initialize_agent(agent_type: AgentType, _cfg):
+    financial_bot_instructions = """
+    - You are a helpful financial assistant in conversation with a user. 
+    - Use your financial expertise when crafting a query to the tool, to ensure you get the most accurate responses.
+    - A user may refer to a company's ticker instead of its full name - consider those the same when a user is asking about a company.
+    - When using a query tool for a metric, make sure to provide the correct ticker and year and concise definition of the metric to avoid ambiguity.
+    - Use tools when available instead of depending on your own knowledge, and consider the field descriptions carefully.
+    - If you calculate a metric, make sure you have all the necessary information to complete the calculation. Don't guess.
+    - Report financial data in a consistent manner. For example if you report revenue in thousands, always report revenue in thousands.
+    - Be very careful not to report results you are not confident about.
+    - Report results in the most relevant multiple. For example, revenues in millions, not thousands.
+    """
+
+    def update_func(status_type: AgentStatusType, msg: str):
+        output = f"{status_type.value} - {msg}"
+        st.session_state.thinking_placeholder.text(output)
+
+    agent = Agent(
+        agent_type=agent_type,
+        tools=create_tools(_cfg),
+        topic="10-K annual financial reports",
+        custom_instructions=financial_bot_instructions,
+        update_func=update_func
+    )
+    return agent
+
 def launch_bot(agent_type: AgentType):
     def reset():
         cfg = st.session_state.cfg
         st.session_state.messages = [{"role": "assistant", "content": initial_prompt, "avatar": "🦖"}]
         st.session_state.thinking_message = "Agent at work..."
+        st.session_state.agent = initialize_agent(agent_type, cfg)
 
-        # Create the agent
-        print("Creating agent...")
-
-        def update_func(status_type: AgentStatusType, msg: str):
-            output = f"{status_type.value} - {msg}"
-            st.session_state.thinking_placeholder.text(output)
-
-        financial_bot_instructions = """
-        - You are a helpful financial assistant in conversation with a user. 
-        - Use your financial expertise when crafting a query to the tool, to ensure you get the most accurate responses.
-        - A user may refer to a company's ticker instead of its full name - consider those the same when a user is asking about a company.
-        - When using a query tool for a metric, make sure to provide the correct ticker and year and concise definition of the metric to avoid ambiguity.
-        - Use tools when available instead of depending on your own knowledge, and consider the field descriptions carefully.
-        - If you calculate a metric, make sure you have all the necessary information to complete the calculation. Don't guess.
-        - Report financial data in a consistent manner. For example if you report revenue in thousands, always report revenue in thousands.
-        - Be very careful not to report results you are not confident about.
-        - Report results in the most relevant multiple. For example, reveuues in millions, not thousands.
-        """
-        st.session_state.agent = Agent(
-            agent_type = agent_type,
-            tools = create_tools(cfg),
-            topic = "10-K annual financial reports",
-            custom_instructions = financial_bot_instructions,
-            update_func = update_func
-        )
-
+    st.set_page_config(page_title="Financial Assistant", layout="wide")
     if 'cfg' not in st.session_state:
         cfg = OmegaConf.create({
             'customer_id': str(os.environ['VECTARA_CUSTOMER_ID']),
@@ -117,9 +120,7 @@ def launch_bot(agent_type: AgentType):
         })
         st.session_state.cfg = cfg
         reset()
-
     cfg = st.session_state.cfg
-    st.set_page_config(page_title="Financial Assistant", layout="wide")
 
     # left side content
     with st.sidebar:
@@ -175,6 +176,5 @@ def launch_bot(agent_type: AgentType):
     sys.stdout.flush()
 
 if __name__ == "__main__":
-    print("Starting up...")
-    launch_bot(agent_type = AgentType.REACT)
+    launch_bot(agent_type=AgentType.OPENAI)
     

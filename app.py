@@ -91,6 +91,7 @@ def initialize_agent(agent_type: AgentType, _cfg):
     - When querying a tool for a numeric value or KPI, use a concise and non-ambiguous description of what you are looking for. 
     - If you calculate a metric, make sure you have all the necessary information to complete the calculation. Don't guess.
     - Be very careful not to report results you are not confident about.
+    - Always use any guardrails tools to ensure your responses are polite and do not discuss politices.
     """
 
     def update_func(status_type: AgentStatusType, msg: str):

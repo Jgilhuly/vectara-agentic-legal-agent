@@ -1,5 +1,5 @@
 ---
-title: Finance chatBot
+title: Finance chat
 emoji: 🐨
 colorFrom: indigo
 colorTo: indigo

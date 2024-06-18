@@ -79,7 +79,6 @@ def create_tools(cfg):
             [query_financial_reports]
     )
 
-@st.cache_resource
 def initialize_agent(agent_type: AgentType, _cfg):
     date = datetime.datetime.now().strftime("%Y-%m-%d")
     financial_bot_instructions = f"""

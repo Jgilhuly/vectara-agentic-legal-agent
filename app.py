@@ -52,11 +52,11 @@ def create_tools(cfg):
     tools_factory = ToolsFactory(vectara_api_key=cfg.api_key, 
                                  vectara_customer_id=cfg.customer_id, 
                                  vectara_corpus_id=cfg.corpus_id)
-    query_financial_reports = tools_factory.create_rag_tool(
-        tool_name = "query_financial_reports",
+    vectara_ask_analysts = tools_factory.create_rag_tool(
+        tool_name = "vectara_ask_analysts",
         tool_description = """
         Given a company name and year, 
-        returns a response (str) to a user query about the company's financial reports for that year.
+        returns a response (str) to a user query based on analyst comments about the company's financial reports for that year.
         make sure to provide the a valid company ticker and year.
         """,
         tool_args_schema = QueryFinancialReportsArgs,
@@ -76,7 +76,7 @@ def create_tools(cfg):
             tools_factory.standard_tools() + 
             tools_factory.financial_tools() + 
             tools_factory.guardrail_tools() +
-            [query_financial_reports]
+            [vectara_ask_analysts]
     )
 
 def initialize_agent(agent_type: AgentType, _cfg):

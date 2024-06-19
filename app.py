@@ -47,7 +47,6 @@ def create_tools(cfg):
     class QueryTranscriptsArgs(BaseModel):
         query: str = Field(..., description="The user query.")
         year: int = Field(..., description=f"The year. an integer between {min(years)} and {max(years)}.")
-        quarter: int = Field(..., description="The quarter. an integer between 1 and 4.")
         ticker: str = Field(..., description=f"The company ticker. Must be a valid ticket symbol from the list {tickers.keys()}.")
 
     tools_factory = ToolsFactory(vectara_api_key=cfg.api_key, 
@@ -57,12 +56,12 @@ def create_tools(cfg):
         tool_name = "ask_transcripts",
         tool_description = """
         Given a company name and year, 
-        returns a response (str) to a user question about a company, based on analyst call transcripts about the company's financial reports for that year and quarter.
+        returns a response (str) to a user question about a company, based on analyst call transcripts about the company's financial reports for that year.
         You can ask this tool any question about the compaany including risks, opportunities, financial performance, competitors and more.
         make sure to provide the a valid company ticker and year.
         """,
         tool_args_schema = QueryTranscriptsArgs,
-        tool_filter_template = "doc.year = {year} and doc.quarter = {quarter} and doc.ticker = '{ticker}'",
+        tool_filter_template = "doc.year = {year} and doc.ticker = '{ticker}'",
         reranker = "multilingual_reranker_v1", rerank_k = 100, 
         n_sentences_before = 2, n_sentences_after = 2, lambda_val = 0.01,
         summary_num_results = 10,

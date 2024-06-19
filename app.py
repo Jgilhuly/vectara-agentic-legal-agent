@@ -57,7 +57,8 @@ def create_tools(cfg):
         tool_name = "ask_transcripts",
         tool_description = """
         Given a company name and year, 
-        returns a response (str) to a user query based on analyst transcripts about the company's financial reports for that year.
+        returns a response (str) to a user question about a company, based on analyst call transcripts about the company's financial reports for that year and quarter.
+        You can ask this tool any question about the compaany including risks, opportunities, financial performance, competitors and more.
         make sure to provide the a valid company ticker and year.
         """,
         tool_args_schema = QueryTranscriptsArgs,

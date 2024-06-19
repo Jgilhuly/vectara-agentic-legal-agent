@@ -44,23 +44,24 @@ def create_tools(cfg):
         """
         return years
     
-    class QueryFinancialReportsArgs(BaseModel):
+    class QueryTranscriptsArgs(BaseModel):
         query: str = Field(..., description="The user query.")
         year: int = Field(..., description=f"The year. an integer between {min(years)} and {max(years)}.")
+        quarter: int = Field(..., description="The quarter. an integer between 1 and 4.")
         ticker: str = Field(..., description=f"The company ticker. Must be a valid ticket symbol from the list {tickers.keys()}.")
 
     tools_factory = ToolsFactory(vectara_api_key=cfg.api_key, 
                                  vectara_customer_id=cfg.customer_id, 
                                  vectara_corpus_id=cfg.corpus_id)
-    vectara_ask_analysts = tools_factory.create_rag_tool(
-        tool_name = "vectara_ask_analysts",
+    ask_transcripts = tools_factory.create_rag_tool(
+        tool_name = "ask_transcripts",
         tool_description = """
         Given a company name and year, 
-        returns a response (str) to a user query based on analyst comments about the company's financial reports for that year.
+        returns a response (str) to a user query based on analyst transcripts about the company's financial reports for that year.
         make sure to provide the a valid company ticker and year.
         """,
-        tool_args_schema = QueryFinancialReportsArgs,
-        tool_filter_template = "doc.year = {year} and doc.ticker = '{ticker}'",
+        tool_args_schema = QueryTranscriptsArgs,
+        tool_filter_template = "doc.year = {year} and doc.quarter = {quarter} and doc.ticker = '{ticker}'",
         reranker = "multilingual_reranker_v1", rerank_k = 100, 
         n_sentences_before = 2, n_sentences_after = 2, lambda_val = 0.01,
         summary_num_results = 10,
@@ -76,7 +77,7 @@ def create_tools(cfg):
             tools_factory.standard_tools() + 
             tools_factory.financial_tools() + 
             tools_factory.guardrail_tools() +
-            [vectara_ask_analysts]
+            [ask_transcripts]
     )
 
 def initialize_agent(agent_type: AgentType, _cfg):

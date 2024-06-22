@@ -1,11 +1,5 @@
-requests_to_curl==1.1.0
-toml==0.10.2
 omegaconf==2.3.0
-syrupy==4.0.8
 streamlit==1.32.2
-llama-index==0.10.42
-llama-index-indices-managed-vectara==0.1.4
-llama-index-agent-openai==0.1.5
 pydantic==1.10.15
 python-dotenv==1.0.1
 git+https://{GITHUB_TOKEN}@github.com/vectara/vectara-agent.git

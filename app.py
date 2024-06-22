@@ -6,6 +6,9 @@ from PIL import Image
 import re
 import sys
 import datetime
+import pandas as pd
+import requests
+from dotenv import load_dotenv
 
 from pydantic import Field, BaseModel
 from vectara_agent.agent import Agent, AgentType, AgentStatusType
@@ -28,6 +31,8 @@ tickers = {
 years = [2020, 2021, 2022, 2023, 2024]
 initial_prompt = "How can I help you today?"
 
+load_dotenv()
+
 def create_tools(cfg):    
 
     def get_company_info() -> list[str]:
@@ -44,6 +49,32 @@ def create_tools(cfg):
         """
         return years
     
+    # Tool to get the income statement for a given company and year using the FMP API
+    def get_income_statement(
+        ticker=Field(description="the ticker symbol of the company."),
+        year=Field(description="the year for which to get the income statement."),
+    ) -> str:
+        """
+        Get the income statement for a given company and year using the FMP (https://financialmodelingprep.com) API.
+        Returns a dictionary with the income statement data.
+        """
+        fmp_api_key = os.environ.get("FMP_API_KEY", None)
+        if fmp_api_key is None:
+            return "FMP_API_KEY environment variable not set. This tool does not work."
+        url = f"https://financialmodelingprep.com/api/v3/income-statement/{ticker}?apikey={fmp_api_key}"
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            income_statement = pd.DataFrame(data)
+            income_statement["date"] = pd.to_datetime(income_statement["date"])
+            income_statement_specific_year = income_statement[
+                income_statement["date"].dt.year == year
+            ]
+            values_dict = income_statement_specific_year.to_dict(orient="records")[0]
+            return f"Financial results: {', '.join([f'{key}: {value}' for key, value in values_dict.items() if key not in ['date', 'cik', 'link', 'finalLink']])}"
+        else:
+            return "FMP API returned error. This tool does not work."
+
     class QueryTranscriptsArgs(BaseModel):
         query: str = Field(..., description="The user query.")
         year: int = Field(..., description=f"The year. an integer between {min(years)} and {max(years)}.")
@@ -72,6 +103,7 @@ def create_tools(cfg):
                 [
                     get_company_info, 
                     get_valid_years,
+                    get_income_statement,
                 ]
             ) +
             tools_factory.standard_tools() + 
@@ -98,6 +130,7 @@ def initialize_agent(agent_type: AgentType, _cfg):
     def update_func(status_type: AgentStatusType, msg: str):
         output = f"{status_type.value} - {msg}"
         st.session_state.thinking_placeholder.text(output)
+        st.session_state.log_messages.append(output)
 
     agent = Agent(
         agent_type=agent_type,
@@ -114,6 +147,8 @@ def launch_bot(agent_type: AgentType):
         st.session_state.messages = [{"role": "assistant", "content": initial_prompt, "avatar": "🦖"}]
         st.session_state.thinking_message = "Agent at work..."
         st.session_state.agent = initialize_agent(agent_type, cfg)
+        st.session_state.log_messages = []
+        st.session_state.show_logs = False
 
     st.set_page_config(page_title="Financial Assistant", layout="wide")
     if 'cfg' not in st.session_state:
@@ -137,14 +172,19 @@ def launch_bot(agent_type: AgentType):
         )
 
         st.markdown("\n\n")
-        if st.button('Start Over'):
-            reset()
+        bc1, bc2 = st.columns([1, 1])
+        with bc1:
+            if st.button('Start Over'):
+                reset()
+        with bc2:
+            if st.button('Show Logs'):
+                st.session_state.show_logs = not st.session_state.show_logs
 
         st.markdown("---")
         st.markdown(
             "## How this works?\n"
             "This app was built with [Vectara](https://vectara.com).\n\n"
-            "It demonstrates the use of Agentic Chat functionality with Vectara"
+            "It demonstrates the use of Agentic RAG functionality with Vectara"
         )
         st.markdown("---")
 
@@ -175,6 +215,15 @@ def launch_bot(agent_type: AgentType):
             st.session_state.messages.append(message)
             st.session_state.thinking_placeholder.empty()
             st.rerun()
+
+    # Display log messages in an expander
+    if st.session_state.show_logs:
+        with st.expander("Agent Log Messages", expanded=True):
+            for msg in st.session_state.log_messages:
+                st.write(msg)
+            if st.button('Close Logs'):
+                st.session_state.show_logs = False
+                st.rerun()
 
     sys.stdout.flush()
 

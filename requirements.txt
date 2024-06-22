@@ -7,4 +7,5 @@ llama-index==0.10.42
 llama-index-indices-managed-vectara==0.1.4
 llama-index-agent-openai==0.1.5
 pydantic==1.10.15
+python-dotenv==1.0.1
 git+https://{GITHUB_TOKEN}@github.com/vectara/vectara-agent.git

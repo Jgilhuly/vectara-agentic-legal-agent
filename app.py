@@ -129,7 +129,6 @@ def initialize_agent(agent_type: AgentType, _cfg):
 
     def update_func(status_type: AgentStatusType, msg: str):
         output = f"{status_type.value} - {msg}"
-        st.session_state.thinking_placeholder.text(output)
         st.session_state.log_messages.append(output)
 
     agent = Agent(
@@ -208,12 +207,10 @@ def launch_bot(agent_type: AgentType):
     if st.session_state.messages[-1]["role"] != "assistant":
         with st.chat_message("assistant", avatar='🤖'):
             with st.spinner(st.session_state.thinking_message):
-                st.session_state.thinking_placeholder = st.empty()
                 res = st.session_state.agent.chat(prompt)
                 cleaned = re.sub(r'\[\d+\]', '', res).replace('$', '\\$')
             message = {"role": "assistant", "content": cleaned, "avatar": '🤖'}
             st.session_state.messages.append(message)
-            st.session_state.thinking_placeholder.empty()
             st.rerun()
 
     # Display log messages in an expander

@@ -11,7 +11,7 @@ import requests
 from dotenv import load_dotenv
 
 from pydantic import Field, BaseModel
-from vectara_agent.agent import Agent, AgentType, AgentStatusType
+from vectara_agent.agent import Agent, AgentStatusType
 from vectara_agent.tools import ToolsFactory
 
 
@@ -31,7 +31,7 @@ tickers = {
 years = [2020, 2021, 2022, 2023, 2024]
 initial_prompt = "How can I help you today?"
 
-load_dotenv()
+load_dotenv(override=True)
 
 def create_tools(cfg):    
 
@@ -56,7 +56,7 @@ def create_tools(cfg):
     ) -> str:
         """
         Get the income statement for a given company and year using the FMP (https://financialmodelingprep.com) API.
-        Returns a dictionary with the income statement data.
+        Returns a dictionary with the income statement data. All data is in USD, but you can convert it to more compact form like K, M, B.
         """
         fmp_api_key = os.environ.get("FMP_API_KEY", None)
         if fmp_api_key is None:
@@ -68,7 +68,7 @@ def create_tools(cfg):
             income_statement = pd.DataFrame(data)
             income_statement["date"] = pd.to_datetime(income_statement["date"])
             income_statement_specific_year = income_statement[
-                income_statement["date"].dt.year == year
+                income_statement["date"].dt.year == int(year)
             ]
             values_dict = income_statement_specific_year.to_dict(orient="records")[0]
             return f"Financial results: {', '.join([f'{key}: {value}' for key, value in values_dict.items() if key not in ['date', 'cik', 'link', 'finalLink']])}"
@@ -112,19 +112,19 @@ def create_tools(cfg):
             [ask_transcripts]
     )
 
-def initialize_agent(agent_type: AgentType, _cfg):
+def initialize_agent(_cfg):
     date = datetime.datetime.now().strftime("%Y-%m-%d")
     financial_bot_instructions = f"""
     - You are a helpful financial assistant, with expertise in finanal reporting, in conversation with a user. 
     - Today's date is {date}.
-    - Report in a concise and clear manner, and provide the most relevant information to the user.
-    - Respond in a concise format by using appropriate units of measure (e.g., K for thousands, M for millions, B for billions). 
+    - Respond in a compact format by using appropriate units of measure (e.g., K for thousands, M for millions, B for billions). 
+      Do not report the same number twice (e.g. $100K and 100,000 USD)
     - Use tools when available instead of depending on your own knowledge.
     - If a tool cannot respond properly, retry with a rephrased question or ask the user for more information.
     - When querying a tool for a numeric value or KPI, use a concise and non-ambiguous description of what you are looking for. 
     - If you calculate a metric, make sure you have all the necessary information to complete the calculation. Don't guess.
     - Be very careful not to report results you are not confident about.
-    - Always use any guardrails tools to ensure your responses are polite and do not discuss politices.
+    - Always use any guardrails tools to ensure your responses are polite and do not discuss politics.
     """
 
     def update_func(status_type: AgentStatusType, msg: str):
@@ -132,7 +132,6 @@ def initialize_agent(agent_type: AgentType, _cfg):
         st.session_state.log_messages.append(output)
 
     agent = Agent(
-        agent_type=agent_type,
         tools=create_tools(_cfg),
         topic="10-K annual financial reports",
         custom_instructions=financial_bot_instructions,
@@ -140,12 +139,12 @@ def initialize_agent(agent_type: AgentType, _cfg):
     )
     return agent
 
-def launch_bot(agent_type: AgentType):
+def launch_bot():
     def reset():
         cfg = st.session_state.cfg
         st.session_state.messages = [{"role": "assistant", "content": initial_prompt, "avatar": "🦖"}]
         st.session_state.thinking_message = "Agent at work..."
-        st.session_state.agent = initialize_agent(agent_type, cfg)
+        st.session_state.agent = initialize_agent(cfg)
         st.session_state.log_messages = []
         st.session_state.show_logs = False
 
@@ -225,5 +224,5 @@ def launch_bot(agent_type: AgentType):
     sys.stdout.flush()
 
 if __name__ == "__main__":
-    launch_bot(agent_type=AgentType.OPENAI)
+    launch_bot()
     

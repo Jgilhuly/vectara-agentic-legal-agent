@@ -37,7 +37,7 @@ def create_tools(cfg):
 
     def get_company_info() -> list[str]:
         """
-        Returns a dictionary of companies you can query about their financial reports.
+        Returns a dictionary of companies you can query about. Always check this before using any other tool.
         The output is a dictionary of valid ticker symbols mapped to company names.
         You can use this to identify the companies you can query about, and their ticker information.
         """
@@ -46,6 +46,7 @@ def create_tools(cfg):
     def get_valid_years() -> list[str]:
         """
         Returns a list of the years for which financial reports are available.
+        Always check this before using any other tool.
         """
         return years
     
@@ -118,7 +119,7 @@ def initialize_agent(_cfg):
     - You are a helpful financial assistant, with expertise in finanal reporting, in conversation with a user. 
     - Today's date is {date}.
     - Respond in a compact format by using appropriate units of measure (e.g., K for thousands, M for millions, B for billions). 
-      Do not report the same number twice (e.g. $100K and 100,000 USD)
+      Do not report the same number twice (e.g. $100K and 100,000 USD).
     - Use tools when available instead of depending on your own knowledge.
     - If a tool cannot respond properly, retry with a rephrased question or ask the user for more information.
     - When querying a tool for a numeric value or KPI, use a concise and non-ambiguous description of what you are looking for. 

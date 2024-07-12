@@ -51,8 +51,9 @@ def initialize_agent(_cfg):
     """
 
     def update_func(status_type: AgentStatusType, msg: str):
-        output = f"{status_type.value} - {msg}"
-        st.session_state.log_messages.append(output)
+        if status_type != AgentStatusType.AGENT_UPDATE:
+            output = f"{status_type.value} - {msg}"
+            st.session_state.log_messages.append(output)
 
     agent = Agent(
         tools=create_tools(_cfg),
@@ -142,7 +143,7 @@ def launch_bot():
         if st.session_state.show_logs:
             st.button("Hide Logs", on_click=toggle_logs)
             for msg in st.session_state.log_messages:
-                st.write(msg)
+                st.text(msg)
         else:
             if len(st.session_state.log_messages) > 0:
                 st.button("Show Logs", on_click=toggle_logs)

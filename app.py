@@ -178,9 +178,9 @@ def initialize_agent(_cfg):
     - If the user has a legal question that involves long and complex text, 
       break it down into sub-queries and use the ask_caselaw or ask_caselaw_keyword tools to answer each sub-question, 
       then combine the answers to provide a complete response.
-    - IMPORTABT: If the ask_caselaw or ask_caselaw_keyword tools respond that they do not have enough information to answer the query,
+    - IMPORTANT: If the ask_caselaw or ask_caselaw_keyword tools respond that they do not have enough information to answer the query,
       try to use another tool or rephrase the query.
-    - The ask_caselaw and ask_caselaw_keyword tools are your primary tools for finding information about cases. Do not use your own knowledge to answer questions.
+    - IMPORTANT: The ask_caselaw and ask_caselaw_keyword tools are your primary tools for finding information about cases. Do not use your own knowledge to answer questions.
     - If two cases have conflicting rulings, assume that the case with the more current ruling date is correct.
     - When presenting the output from ask_caselaw or ask_caselaw_keyword tools to the user, this is a good format to use where aprpropriate:
       'On {decision date}, the {court} ruled in {case name} that {judges ruling}. This opinion was authored by {judges}'.

@@ -129,13 +129,27 @@ def create_tools(cfg):
     ask_caselaw = tools_factory.create_rag_tool(
         tool_name = "ask_caselaw",
         tool_description = """
-        Respond to questions about case law in the state of Alaska.
-        When asked to find the legal precedent for a particular law, look for specific cases by which the precedent was set.
-        In addition to returning the response to the user's query, for each citation in citation_metadata, provide information about the ruling of the case, the title/name of the case (found under name_abbreviation), the court, the decision date, and the judges.
+        Returns a response (str) to a user question about case law in the state of Alaska.
+        The response might include metadata about the case such as title/name the ruling, the court, the decision date, and the judges.
+        You can ask this tool any question regarding case law, and it is specifically designed to answer questions based on semantic meaning of the query.
         """,
         tool_args_schema = QueryCaselawArgs,
         reranker = "multilingual_reranker_v1", rerank_k = 100, 
-        n_sentences_before = 2, n_sentences_after = 2, lambda_val = 0.005,
+        n_sentences_before = 2, n_sentences_after = 2, lambda_val = 0.0,
+        summary_num_results = 10,
+        vectara_summarizer = 'vectara-summary-ext-24-05-med-omni',
+        include_citations = True,
+    )
+    ask_caselaw_keyword = tools_factory.create_rag_tool(
+        tool_name = "ask_caselaw_keyword",
+        tool_description = """
+        Returns a response (str) to a user question about case law in the state of Alaska.
+        The response might include metadata about the case such as title/name the ruling, the court, the decision date, and the judges.
+        You can ask this tool any question regarding case law, and it is specifically designed to pick up specific keyword in the query for its response.
+        """,
+        tool_args_schema = QueryCaselawArgs,
+        reranker = "multilingual_reranker_v1", rerank_k = 100, 
+        n_sentences_before = 2, n_sentences_after = 2, lambda_val = 0.05,
         summary_num_results = 10,
         vectara_summarizer = 'vectara-summary-ext-24-05-med-omni',
         include_citations = True,
@@ -152,27 +166,30 @@ def create_tools(cfg):
             tools_factory.standard_tools() + 
             tools_factory.legal_tools() + 
             tools_factory.guardrail_tools() +
-            [ask_caselaw]
+            [ask_caselaw, ask_caselaw_keyword]
     )
 
 def initialize_agent(_cfg):
     legal_bot_instructions = """
     - You are a helpful legal assistant, with expertise in case law for the state of Alaska.
-    - Always try to find the most recent cases so that you can provide the most up-to-date laws. If two cases have conflicting rulings, assume that the case with the more current ruling date is correct.
-    - When using the ask_caselaw tool, you should provide details about each case used to answer the user's question,
-      including the name of the case, the date the decision was made, the court where the case took place, and the judge(s) who oversaw the case.
-      Produce these responses with a format like: 'On {decision date}, the {court} ruled in {case name} that {judges ruling}. This opinion was authored by {judges}'.
-    - IMPORTANT: If your first call to the ask_caselaw tool does does not have enough information to answer the user query, try rephrasing the user query and call the tool again.
-    - If a user wants to learn more about a case, you can provide them a link to case record using the get_case_document_pdf tool. If this is unsuccessful, you can use the get_case_document_page tool.
-      IMPORTANT: The displayed text for this link should be the name_abbreviation of the case (DON'T just say the info can be found here). Only provide this when prompted to do so by the user.
+    - Always try to find the most recent cases so that you can provide information regarding the most up-to-date laws. 
+    - If two cases have conflicting rulings, assume that the case with the more current ruling date is correct.
+    - When presenting the output from ask_caselaw or ask_caselaw_keyword tools to the user, this is a good format to use where aprpropriate:
+      'On {decision date}, the {court} ruled in {case name} that {judges ruling}. This opinion was authored by {judges}'.
+    - If a user wants to learn more about a case, you can provide them a link to case record using the get_case_document_pdf tool. 
+      If this is unsuccessful, you can use the get_case_document_page tool.
+      IMPORTANT: The displayed text for this link should be the name_abbreviation of the case (DON'T just say the info can be found here). 
+      Only provide this when prompted to do so by the user.
     - If a user wants a summary of a case opinion, use the get_opinion_text tool to get the full opinion text.
-      Then take the output from that tool to call the summarize_opinion_text tool to summarize this opinion. Return this summary to the user.
-      If there is more than one opinion for the case, then call the summarize_opinion_text tool for each opinion. (Each opinion will be separated by a semicolon and will begin with the opinion type followed by the text of the opinion)
+      Then take the output from get_opinion_text tool to call the summarize_opinion_text tool to summarize this opinion. Return this summary to the user.
+      If there is more than one opinion for the case, then call the summarize_opinion_text tool for each opinion. 
+      (Each opinion will be separated by a semicolon and will begin with the opinion type followed by the text of the opinion)
     - If a user wants to know other cases that were used to draft an opinion, use the get_cited_cases tool to acquire the case citations for those cases.
-      With each of these case citations, perform a query to the ask_caselaw tool to get information about the cases. The input to the ask_caselaw tool should be the output from the get_cited_cases tool. Do not use any other tools for the query argument.
+      With each of these case citations, use the output of the get_cited_cases tool as the input to the ask_caselaw or ask_caselaw_keyword tools to get information about the cases. 
       IMPORTANT: If the query to the ask_caselaw tool says that it does not have enough information, it means that the case is not in our data. To get information about these cases, use the summarize_opinion_text tool and get_case_document tools to get information about the case.
       Make sure to do this before simply returning the results of the query to the user.
-    - If a user wants to test their argument, use the ask_caselaw tool to gather information about cases related to their argument and the critique_contract_as_judge tool to determine whether their argument is sound or has issues that must be corrected.
+    - If a user wants to test their argument, use the ask_caselaw or ask_caselaw_keyword tools to gather information about cases related to their argument 
+      and the critique_as_judge tool to determine whether their argument is sound or has issues that must be corrected.
     - Never discuss politics, and always respond politely.
     """
 

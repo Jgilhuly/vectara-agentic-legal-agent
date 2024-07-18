@@ -1,4 +1,3 @@
-
 from omegaconf import OmegaConf
 import streamlit as st
 import os
@@ -6,19 +5,121 @@ from PIL import Image
 import sys
 import pandas as pd
 import requests
-from dotenv import load_dotenv
+import json
 
 from pydantic import Field, BaseModel
 from vectara_agent.agent import Agent, AgentStatusType
 from vectara_agent.tools import ToolsFactory
 
-
+from dotenv import load_dotenv
 load_dotenv(override=True)
+
 initial_prompt = "How can I help you today?"
 
 
-def create_tools(cfg):    
+def create_tools(cfg):
+
     
+    def get_opinion_text(case_citation) -> str:
+        """
+        Given a specific case, this tool returns the full opinion/ruling text of the case.
+        The input for this function is the "citations" from the citation_metadata for a previous response from the ask_caselaw tool.
+        If there is more than one opinion for the case, the type of each opinion is returned with the text, and the opinions are separated by semicolons (;)
+        You can use this tool when a user wants a summary or the full text of an opinion for a case.
+        """
+
+        citation_components = case_citation.split()
+        volume_num = citation_components[0]
+        reporter = '-'.join(citation_components[1:-1]).replace('.', '').lower()
+        first_page = int(citation_components[-1])
+
+        response = requests.get(f"https://static.case.law/{reporter}/{volume_num}/cases/{first_page:04d}-01.json")
+        res = json.loads(response.text)
+
+        if len(res["casebody"]["opinions"]) == 1:
+            return res["casebody"]["opinions"][0]["text"]
+        else:
+            opinions = ""
+
+            for opinion in res["casebody"]["opinions"]:
+                opinions += f"Opinion type: {opinion['type']}, text: {opinion['text']};"
+
+            return opinions
+
+    # THIS MAY NOT COMPILE, PROBABLY NEED TO PUT BELOW TOOLS FACTORY DEFINITON
+    def summarize_opinion_text(full_text) -> str:
+        """
+        Given the full opinion text, this tool returns a summary of the opinion.
+        The input for this function is the full opinion text.
+        Call this function after the get_opinion_text tool is used when a user wants a summary of the opinion text.
+        Use the output of the get_opinion_text tool as the input for this function.
+        """
+
+        legal_summarizer = tools_factory.legal_tools()[0]
+
+        return legal_summarizer(full_text)
+
+    def get_case_document_pdf(case_citation) -> str:
+        """
+        Given a specific case, this tool returns a link/url to a pdf of the case record.
+        The input for this function is the "citations" from the citation_metadata for a previous response from the ask_caselaw tool.
+        You can use this tool when a user wants to read the original text or see more details about a case.
+        """
+
+        citation_components = case_citation.split()
+        volume_num = citation_components[0]
+        reporter = '-'.join(citation_components[1:-1]).replace('.', '').lower()
+        first_page = int(citation_components[-1])
+
+        response = requests.get(f"https://static.case.law/{reporter}/{volume_num}/cases/{first_page:04d}-01.json")
+        res = json.loads(response.text)
+        page_number = res["first_page_order"]
+
+        return f"static.case.law/{reporter}/{volume_num}.pdf#page={page_number}"
+
+    def get_case_document_page(case_citation) -> str:
+        """
+        Given a specific case, this tool returns a link/url to a page with information about the case.
+        The input for this function is the "citations" from the citation_metadata for a previous response from the ask_caselaw tool.
+        You can use this tool when a user wants to read the original text or see more details about a case and accessing the pdf is unsuccessful.
+        """
+
+        citation_components = case_citation.split()
+        volume_num = citation_components[0]
+        reporter = '-'.join(citation_components[1:-1]).replace('.', '').lower()
+        first_page = int(citation_components[-1])
+
+        # response = requests.get(f"https://static.case.law/{reporter}/{volume_num}/cases/{first_page:04d}-01.json")
+        # res = json.loads(response.text)
+        # page_number = res["first_page_order"]
+
+        return f"https://case.law/caselaw/?reporter={reporter}&volume={volume_num}&case={first_page:04d}-01"
+        
+    def get_cited_cases(case_citation) -> str:
+        """
+        Given a specific case, this tool returns a list of other cases that are cited by the opinion of this case.
+        The input for this function is the "citations" from the citation_metadata for a previous response from the ask_caselaw tool.
+        The output is a list of case citations, separated by semicolons (;)
+        You can use this tool when a user wants to know what other cases were used to form the opinion for a particular case.
+        """
+
+        citation_components = case_citation.split()
+        volume_num = citation_components[0]
+        reporter = '-'.join(citation_components[1:-1]).replace('.', '').lower()
+        first_page = int(citation_components[-1])
+
+        response = requests.get(f"https://static.case.law/{reporter}/{volume_num}/cases/{first_page:04d}-01.json")
+        res = json.loads(response.text)
+
+        citations = res["cites_to"]
+
+        other_citations = ""
+
+        for citation in citations[:5]:
+            other_citations += citation["cite"] + ';'
+
+        return other_citations
+
     class QueryCaselawArgs(BaseModel):
         query: str = Field(..., description="The user query.")
 
@@ -28,7 +129,9 @@ def create_tools(cfg):
     ask_caselaw = tools_factory.create_rag_tool(
         tool_name = "ask_caselaw",
         tool_description = """
-        Responds to questions about Case Law in the state of Alaska.
+        Respond to questions about case law in the state of Alaska.
+        When asked to find the legal precedent for a particular law, look for specific cases by which the precedent was set.
+        In addition to returning the response to the user's query, for each citation in citation_metadata, provide information about the ruling of the case, the title/name of the case (found under name_abbreviation), the court, the decision date, and the judges.
         """,
         tool_args_schema = QueryCaselawArgs,
         reranker = "multilingual_reranker_v1", rerank_k = 100, 
@@ -38,7 +141,15 @@ def create_tools(cfg):
         include_citations = True,
     )
 
-    return (tools_factory.standard_tools() + 
+    return (tools_factory.get_tools([
+        get_opinion_text,
+        summarize_opinion_text,
+        get_case_document_pdf,
+        get_case_document_page,
+        get_cited_cases
+        ]
+        ) + 
+            tools_factory.standard_tools() + 
             tools_factory.legal_tools() + 
             tools_factory.guardrail_tools() +
             [ask_caselaw]
@@ -47,6 +158,21 @@ def create_tools(cfg):
 def initialize_agent(_cfg):
     legal_bot_instructions = """
     - You are a helpful legal assistant, with expertise in case law for the state of Alaska.
+    - Always try to find the most recent cases so that you can provide the most up-to-date laws. If two cases have conflicting rulings, assume that the case with the more current ruling date is correct.
+    - When using the ask_caselaw tool, you should provide details about each case used to answer the user's question,
+      including the name of the case, the date the decision was made, the court where the case took place, and the judge(s) who oversaw the case.
+      Produce these responses with a format like: 'On {decision date}, the {court} ruled in {case name} that {judges ruling}. This opinion was authored by {judges}'.
+    - IMPORTANT: If your first call to the ask_caselaw tool does does not have enough information to answer the user query, try rephrasing the user query and call the tool again.
+    - If a user wants to learn more about a case, you can provide them a link to case record using the get_case_document_pdf tool. If this is unsuccessful, you can use the get_case_document_page tool.
+      IMPORTANT: The displayed text for this link should be the name_abbreviation of the case (DON'T just say the info can be found here). Only provide this when prompted to do so by the user.
+    - If a user wants a summary of a case opinion, use the get_opinion_text tool to get the full opinion text.
+      Then take the output from that tool to call the summarize_opinion_text tool to summarize this opinion. Return this summary to the user.
+      If there is more than one opinion for the case, then call the summarize_opinion_text tool for each opinion. (Each opinion will be separated by a semicolon and will begin with the opinion type followed by the text of the opinion)
+    - If a user wants to know other cases that were used to draft an opinion, use the get_cited_cases tool to acquire the case citations for those cases.
+      With each of these case citations, perform a query to the ask_caselaw tool to get information about the cases. The input to the ask_caselaw tool should be the output from the get_cited_cases tool. Do not use any other tools for the query argument.
+      IMPORTANT: If the query to the ask_caselaw tool says that it does not have enough information, it means that the case is not in our data. To get information about these cases, use the summarize_opinion_text tool and get_case_document tools to get information about the case.
+      Make sure to do this before simply returning the results of the query to the user.
+    - If a user wants to test their argument, use the ask_caselaw tool to gather information about cases related to their argument and the critique_contract_as_judge tool to determine whether their argument is sound or has issues that must be corrected.
     - Never discuss politics, and always respond politely.
     """
 
@@ -57,7 +183,7 @@ def initialize_agent(_cfg):
 
     agent = Agent(
         tools=create_tools(_cfg),
-        topic="case law in Alaska",
+        topic="Case law in Alaska",
         custom_instructions=legal_bot_instructions,
         update_func=update_func
     )
@@ -92,8 +218,9 @@ def launch_bot():
     # left side content
     with st.sidebar:
         image = Image.open('Vectara-logo.png')
-        st.image(image, width=250)
+        st.image(image, width=175)
         st.markdown("## Welcome to the Legal assistant demo.\n\n\n")
+        st.markdown("This demo can help you prepare for a court case by providing you information about past court cases in Alaska.")
 
         st.markdown("\n\n")
         bc1, _ = st.columns([1, 1])
@@ -152,4 +279,3 @@ def launch_bot():
 
 if __name__ == "__main__":
     launch_bot()
-    

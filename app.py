@@ -182,7 +182,8 @@ def initialize_agent(_cfg):
       try to use another tool or rephrase the query.
     - IMPORTANT: The ask_caselaw and ask_caselaw_keyword tools are your primary tools for finding information about cases. Do not use your own knowledge to answer questions.
     - If two cases have conflicting rulings, assume that the case with the more current ruling date is correct.
-    - When presenting the output from ask_caselaw or ask_caselaw_keyword tools to the user, this is a good format to use where aprpropriate:
+    - When presenting the output about a case to the user, based on information from ask_caselaw and ask_caselaw_keyword,
+      make sure to extract metadata from the tool, and present the output in this format:
       'On {decision date}, the {court} ruled in {case name} that {judges ruling}. This opinion was authored by {judges}'.
     - If a user wants to learn more about a case, you can provide them a link to case record using the get_case_document_pdf tool. 
       If this is unsuccessful, you can use the get_case_document_page tool.
@@ -198,6 +199,8 @@ def initialize_agent(_cfg):
       Make sure to do this before simply returning the results of the query to the user.
     - If a user wants to test their argument, use the ask_caselaw or ask_caselaw_keyword tools to gather information about cases related to their argument 
       and the critique_as_judge tool to determine whether their argument is sound or has issues that must be corrected.
+    - If the response is based on cases that are older than 5 years, make sure to inform the user that the information may be outdated.
+      because some case opinions may be outdated and may not longer apply in law.
     - Never discuss politics, and always respond politely.
     """
 

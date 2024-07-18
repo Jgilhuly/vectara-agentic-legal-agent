@@ -151,7 +151,7 @@ def create_tools(cfg):
         """,
         tool_args_schema = QueryCaselawArgs,
         reranker = "multilingual_reranker_v1", rerank_k = 100, 
-        n_sentences_before = 2, n_sentences_after = 2, lambda_val = 0.05,
+        n_sentences_before = 2, n_sentences_after = 2, lambda_val = 0.1,
         summary_num_results = 10,
         vectara_summarizer = 'vectara-summary-ext-24-05-med-omni',
         include_citations = True,

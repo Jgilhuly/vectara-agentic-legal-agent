@@ -113,7 +113,7 @@ def create_tools(cfg):
 
     class QueryCaselawArgs(BaseModel):
         query: str = Field(..., description="The user query.")
-        citations: Optional[str] = Field(default = None, 
+        case_citations: Optional[str] = Field(default = None, 
                                         description = "The citation of the case. Optional.", 
                                         examples = ['253 P.2d 136', '10 Alaska 11', '6 C.M.A. 3'])
 
@@ -123,29 +123,14 @@ def create_tools(cfg):
     ask_caselaw = tools_factory.create_rag_tool(
         tool_name = "ask_caselaw",
         tool_description = """
-        Returns a response (str) to the user query about case law in the state of Alaska.
-        If citations is provided, filters the response based on information from that case.
+        Returns a response (str) to the user query base on case law in the state of Alaska.
+        If 'case_citations' is provided, filters the response based on information from that case.
         The response might include metadata about the case such as title/name the ruling, the court, the decision date, and the judges.
-        This law is designed to answer questions based on the semantic meaning of the query.
+        Use this tool for general case law queries.
         """,
         tool_args_schema = QueryCaselawArgs,
         reranker = "multilingual_reranker_v1", rerank_k = 100, 
         n_sentences_before = 2, n_sentences_after = 2, lambda_val = 0.0,
-        summary_num_results = 10,
-        vectara_summarizer = 'vectara-summary-ext-24-05-med-omni',
-        include_citations = True,
-    )
-    ask_caselaw_keyword = tools_factory.create_rag_tool(
-        tool_name = "ask_caselaw_keyword",
-        tool_description = """
-        Returns a response (str) to the user query about case law in the state of Alaska.
-        If citation is provided, filters the response based on information from that case.
-        The response might include metadata about the case such as title/name the ruling, the court, the decision date, and the judges.
-        This law is designed to answer questions based on specific keyword in the query for its response.
-        """,
-        tool_args_schema = QueryCaselawArgs,
-        reranker = "multilingual_reranker_v1", rerank_k = 100, 
-        n_sentences_before = 2, n_sentences_after = 2, lambda_val = 0.1,
         summary_num_results = 10,
         vectara_summarizer = 'vectara-summary-ext-24-05-med-omni',
         include_citations = True,
@@ -162,7 +147,7 @@ def create_tools(cfg):
             tools_factory.standard_tools() + 
             tools_factory.legal_tools() + 
             tools_factory.guardrail_tools() +
-            [ask_caselaw, ask_caselaw_keyword]
+            [ask_caselaw]
     )
 
 def initialize_agent(_cfg):
@@ -170,20 +155,21 @@ def initialize_agent(_cfg):
     legal_bot_instructions = """
     - You are a helpful legal assistant, with expertise in case law for the state of Alaska.
     - If the user has a legal question that involves long and complex text, 
-      break it down into sub-queries and use the ask_caselaw or ask_caselaw_keyword tools to answer each sub-question, 
+      break it down into sub-queries and use the ask_caselaw tool to answer each sub-question, 
       then combine the answers to provide a complete response. 
-    - When presenting the output from ask_caselaw and ask_caselaw_keyword tools,
+    - When presenting the output from ask_caselaw tool,
       make sure to extract metadata from the tool, and present the output in this format:
       'On {decision date}, the {court} ruled in {case name} that {judges ruling}. This opinion was authored by {judges}'.
-    - If the ask_caselaw or ask_caselaw_keyword tools respond that they do not have enough information to answer the query,
+    - If the ask_caselaw tool responds that it does not have enough information to answer the query,
       try to rephrase the query and call the tool again.
-    - IMPORTANT: The ask_caselaw and ask_caselaw_keyword tools are your primary tools for finding information about cases. Do not use your own knowledge to answer questions or provide links in your responses from these tools.
+    - IMPORTANT: The ask_caselaw tool is your primary tools for finding information about cases. 
+      Do not use your own knowledge to answer questions.
     - If two cases have conflicting rulings, assume that the case with the more current ruling date is correct.
     - If a user wants to learn more about a case, you can provide them a link to the case record using the get_case_document_pdf tool.
       If this is unsuccessful, you can use the get_case_document_page tool. Don't call the get_case_document_page tool until after you have tried the get_case_document_pdf tool.
       Don't provide links from any other tools!
       IMPORTANT: The displayed text for this link should be the name_abbreviation of the case (DON'T just say the info can be found here).
-    - If a user wants to test their argument, use the ask_caselaw or ask_caselaw_keyword tools to gather information about cases related to their argument 
+    - If a user wants to test their argument, use the ask_caselaw tool to gather information about cases related to their argument 
       and the critique_as_judge tool to determine whether their argument is sound or has issues that must be corrected.
     - Never discuss politics, and always respond politely.
     """

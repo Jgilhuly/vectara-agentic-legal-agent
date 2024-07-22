@@ -171,6 +171,8 @@ def initialize_agent(_cfg):
       IMPORTANT: The displayed text for this link should be the name_abbreviation of the case (DON'T just say the info can be found here).
     - If a user wants to test their argument, use the ask_caselaw tool to gather information about cases related to their argument 
       and the critique_as_judge tool to determine whether their argument is sound or has issues that must be corrected.
+    - IMPORTANT: If the response is based on cases that are older than 5 years, make sure to inform the user that the information may be outdated,
+      since some case opinions may no longer apply in law.
     - Never discuss politics, and always respond politely.
     """
 

@@ -1,11 +1,13 @@
-from omegaconf import OmegaConf
-import streamlit as st
 import os
+import re
 from PIL import Image
 import sys
-import pandas as pd
 import requests
 import json
+
+from omegaconf import OmegaConf
+import streamlit as st
+from streamlit_pills import pills
 
 from typing import Optional
 from pydantic import Field, BaseModel
@@ -39,21 +41,9 @@ def create_tools(cfg):
             return res["casebody"]["opinions"][0]["text"]
         else:
             opinions = ""
-
             for opinion in res["casebody"]["opinions"]:
                 opinions += f"Opinion type: {opinion['type']}, text: {opinion['text']};"
-
             return opinions
-
-    def summarize_opinion_text(
-            full_text = Field(description = "the complete opinion text for a case")) -> str:
-        """
-        Given a full opinion text, returns a summary of the opinion.
-        """
-
-        legal_summarizer = tools_factory.legal_tools()[0]
-
-        return legal_summarizer(full_text)
 
     def get_case_document_pdf(
             case_citation = Field(description = citation_description)
@@ -111,6 +101,18 @@ def create_tools(cfg):
 
         return other_citations
 
+    def validate_url(
+            url = Field(description = "A web url pointing to case-law document")
+        ) -> bool:
+        """
+        Given a link, returns whether or not the link is valid.
+        If it is not valid, it should not be used in any output.
+        """  
+
+        pdf_pattern = re.compile(r'^https://static.case.law/.*')
+        document_pattern = re.compile(r'^https://case.law/caselaw/?reporter=.*')
+        return bool(pdf_pattern.match(url)) | bool(document_pattern.match(url))
+
     class QueryCaselawArgs(BaseModel):
         query: str = Field(..., description="The user query.")
         citations: Optional[str] = Field(default = None, 
@@ -137,17 +139,16 @@ def create_tools(cfg):
     )
 
     return (tools_factory.get_tools([
-        get_opinion_text,
-        summarize_opinion_text,
-        get_case_document_pdf,
-        get_case_document_page,
-        get_cited_cases
-        ]
-        ) + 
-            tools_factory.standard_tools() + 
-            tools_factory.legal_tools() + 
-            tools_factory.guardrail_tools() +
-            [ask_caselaw]
+            get_opinion_text,
+            get_case_document_pdf,
+            get_case_document_page,
+            get_cited_cases,
+            validate_url
+        ]) + 
+        tools_factory.standard_tools() + 
+        tools_factory.legal_tools() + 
+        tools_factory.guardrail_tools() +
+        [ask_caselaw]
     )
 
 def initialize_agent(_cfg):
@@ -161,7 +162,7 @@ def initialize_agent(_cfg):
       try to rephrase the query and call the tool again.
     - When presenting the output from ask_caselaw tool,
       Extract metadata from the tool's response, and respond in this format:
-      'On {decision date}, the {court} ruled in {case name} that {judges ruling}. This opinion was authored by {judges}'.
+      'On <decision date>, the <court> ruled in <case name> that <judges ruling>. This opinion was authored by <judges>'.
     - IMPORTANT: The ask_caselaw tool is your primary tools for finding information about cases. 
       Do not use your own knowledge to answer questions.
     - If two cases have conflicting rulings, assume that the case with the more current ruling date is correct.
@@ -173,6 +174,7 @@ def initialize_agent(_cfg):
     - IMPORTANT: The displayed text for this link should be the name_abbreviation of the case (DON'T just say the info can be found here).
     - If a user wants to test their argument, use the ask_caselaw tool to gather information about cases related to their argument 
       and the critique_as_judge tool to determine whether their argument is sound or has issues that must be corrected.
+    - When including a link in your response, make sure to validate the link using the validate_url tool.
     - Never discuss politics, and always respond politely.
     """
 
@@ -194,12 +196,22 @@ def initialize_agent(_cfg):
 def toggle_logs():
     st.session_state.show_logs = not st.session_state.show_logs
 
+def show_example_questions():        
+    if len(st.session_state.example_messages) > 0 and st.session_state.first_turn:            
+        selected_example = pills("Queries to Try:", st.session_state.example_messages, index=None)
+        if selected_example:
+            st.session_state.ex_prompt = selected_example
+            st.session_state.first_turn = False
+            return True
+    return False
+
 def launch_bot():
     def reset():
         st.session_state.messages = [{"role": "assistant", "content": initial_prompt, "avatar": "🦖"}]
         st.session_state.thinking_message = "Agent at work..."
         st.session_state.log_messages = []
         st.session_state.prompt = None
+        st.session_state.first_turn = True
         st.session_state.show_logs = False
 
     st.set_page_config(page_title="Legal Assistant", layout="wide")
@@ -208,8 +220,12 @@ def launch_bot():
             'customer_id': str(os.environ['VECTARA_CUSTOMER_ID']),
             'corpus_id': str(os.environ['VECTARA_CORPUS_ID']),
             'api_key': str(os.environ['VECTARA_API_KEY']),
+            'examples': os.environ.get('QUERY_EXAMPLES', None)
         })
         st.session_state.cfg = cfg
+        st.session_state.ex_prompt = None
+        example_messages = [example.strip() for example in cfg.examples.split(",")] if cfg.examples else []
+        st.session_state.example_messages = [em for em in example_messages if len(em)>0]
         reset()
 
     cfg = st.session_state.cfg
@@ -244,8 +260,18 @@ def launch_bot():
         with st.chat_message(message["role"], avatar=message["avatar"]):
             st.write(message["content"])
 
+    example_container = st.empty()
+    with example_container:
+        if show_example_questions():
+            example_container.empty()
+            st.rerun()
+
     # User-provided prompt
-    if prompt := st.chat_input():
+    if st.session_state.ex_prompt:
+        prompt = st.session_state.ex_prompt
+    else:
+        prompt = st.chat_input()
+    if prompt:
         st.session_state.messages.append({"role": "user", "content": prompt, "avatar": '🧑‍💻'})
         st.session_state.prompt = prompt  # Save the prompt in session state
         st.session_state.log_messages = []
@@ -253,6 +279,7 @@ def launch_bot():
         with st.chat_message("user", avatar='🧑‍💻'):
             print(f"Starting new question: {prompt}\n")
             st.write(prompt)
+        st.session_state.ex_prompt = None
         
     # Generate a new response if last message is not from assistant
     if st.session_state.prompt:
@@ -263,7 +290,9 @@ def launch_bot():
             message = {"role": "assistant", "content": res, "avatar": '🤖'}
             st.session_state.messages.append(message)
             st.markdown(res)
-            st.session_state.prompt = None
+        st.session_state.ex_prompt = None
+        st.session_state.prompt = None
+        st.rerun()
 
     log_placeholder = st.empty()
     with log_placeholder.container():

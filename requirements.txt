@@ -1,5 +1,6 @@
 omegaconf==2.3.0
-streamlit==1.32.2
 pydantic==1.10.15
 python-dotenv==1.0.1
+streamlit==1.32.2
+streamlit_pills==0.3.0
 git+https://{GITHUB_TOKEN}@github.com/vectara/vectara-agent.git

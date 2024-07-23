@@ -19,7 +19,17 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 initial_prompt = "How can I help you today?"
-citation_description = "The citation for a particular case, including the volumn number, reporter and first page. For example: 253 P.2d 136"
+citation_description = '''
+    The citation for a particular case. 
+    Citation must include the volume number, reporter, and first page. For example: 253 P.2d 136.
+'''
+
+def extract_components_from_citation(citation: str) -> bool:
+    citation_components = citation.split()
+    volume_num = citation_components[0]
+    reporter = '-'.join(citation_components[1:-1]).replace('.', '').lower()
+    first_page = int(citation_components[-1])
+    return volume_num, reporter, first_page
 
 def create_tools(cfg):
 
@@ -30,12 +40,10 @@ def create_tools(cfg):
         Given case citation, returns the full opinion/ruling text of the case.
         If there is more than one opinion for the case, the type of each opinion is returned with the text, and the opinions are separated by semicolons (;)
         """
-        citation_components = case_citation.split()
-        volume_num = citation_components[0]
-        reporter = '-'.join(citation_components[1:-1]).replace('.', '').lower()
-        first_page = int(citation_components[-1])
-
+        volume_num, reporter, first_page = extract_components_from_citation(case_citation)
         response = requests.get(f"https://static.case.law/{reporter}/{volume_num}/cases/{first_page:04d}-01.json")
+        if response.status_code != 200:
+            return "Case not found; please check the citation."
         res = json.loads(response.text)
 
         if len(res["casebody"]["opinions"]) == 1:
@@ -52,16 +60,12 @@ def create_tools(cfg):
         """
         Given a case citation, returns a valid web url to a pdf of the case record
         """
-
-        citation_components = case_citation.split()
-        volume_num = citation_components[0]
-        reporter = '-'.join(citation_components[1:-1]).replace('.', '').lower()
-        first_page = int(citation_components[-1])
-
+        volume_num, reporter, first_page = extract_components_from_citation(case_citation)
         response = requests.get(f"https://static.case.law/{reporter}/{volume_num}/cases/{first_page:04d}-01.json")
+        if response.status_code != 200:
+            return "Case not found; please check the citation."
         res = json.loads(response.text)
         page_number = res["first_page_order"]
-
         return f"https://static.case.law/{reporter}/{volume_num}.pdf#page={page_number}"
 
     def get_case_document_page(
@@ -70,13 +74,12 @@ def create_tools(cfg):
         """
         Given a case citation, returns a valid web url to a page with information about the case.
         """
-
-        citation_components = case_citation.split()
-        volume_num = citation_components[0]
-        reporter = '-'.join(citation_components[1:-1]).replace('.', '').lower()
-        first_page = int(citation_components[-1])
-
-        return f"https://case.law/caselaw/?reporter={reporter}&volume={volume_num}&case={first_page:04d}-01"
+        volume_num, reporter, first_page = extract_components_from_citation(case_citation)
+        url = f"https://case.law/caselaw/?reporter={reporter}&volume={volume_num}&case={first_page:04d}-01"
+        response = requests.get(url)
+        if response.status_code != 200:
+            return "Case not found; please check the citation."
+        return url
         
     def get_case_name(
             case_citation = Field(description = citation_description)
@@ -84,10 +87,7 @@ def create_tools(cfg):
         """
         Given a case citation, returns its name and name abbreviation.
         """
-        citation_components = case_citation.split()
-        volume_num = citation_components[0]
-        reporter = '-'.join(citation_components[1:-1]).replace('.', '').lower()
-        first_page = int(citation_components[-1])
+        volume_num, reporter, first_page = extract_components_from_citation(case_citation)
         response = requests.get(f"https://static.case.law/{reporter}/{volume_num}/cases/{first_page:04d}-01.json")
         if response.status_code != 200:
             return "Case not found", "Case not found"
@@ -101,14 +101,11 @@ def create_tools(cfg):
         Given a case citation, returns a list of cases that are cited by the opinion of this case.
         The output is a list of cases, each a dict with the citation, name and name_abbreviation of the case.
         """
-        citation_components = case_citation.split()
-        volume_num = citation_components[0]
-        reporter = '-'.join(citation_components[1:-1]).replace('.', '').lower()
-        first_page = int(citation_components[-1])
-
+        volume_num, reporter, first_page = extract_components_from_citation(case_citation)
         response = requests.get(f"https://static.case.law/{reporter}/{volume_num}/cases/{first_page:04d}-01.json")
+        if response.status_code != 200:
+            return "Case not found; please check the citation."
         res = json.loads(response.text)
-
         citations = res["cites_to"]
         res = []
         for citation in citations[:10]:
@@ -146,7 +143,9 @@ def create_tools(cfg):
         tool_description = """
         Returns a response (str) to the user query base on case law in the state of Alaska.
         If 'citations' is provided, filters the response based on information from that case.
-        The response might include metadata about the case such as title/name the ruling, the court, the decision date, and the judges.
+        The response includes metadata about the case such as title/name the ruling, the court, 
+        the decision date, the judges, and the case citation. 
+        You can use case citations from the metadata as input to other tools.
         Use this tool for general case law queries.
         """,
         tool_args_schema = QueryCaselawArgs,
@@ -183,12 +182,16 @@ def initialize_agent(_cfg):
     - When presenting the output from ask_caselaw tool,
       Extract metadata from the tool's response, and respond in this format:
       'On <decision date>, the <court> ruled in <case name> that <judges ruling>. This opinion was authored by <judges>'.
+    - Citations include 3 components: volume number, reporter, and first page. 
+      Here are some examples: '253 P.2d 136', '10 Alaska 11', '6 C.M.A. 3'
+      Never use your internal knowledge to contruct or guess what the citation is.
     - IMPORTANT: The ask_caselaw tool is your primary tools for finding information about cases. 
       Do not use your own knowledge to answer questions.
     - If two cases have conflicting rulings, assume that the case with the more current ruling date is correct.
     - IMPORTANT: If the response is based on cases that are older than 5 years, make sure to inform the user that the information may be outdated,
       since some case opinions may no longer apply in law.
-    - To summarize the text of a case, first use the get_opinion_text to retrieve the full text and then use the summarize_legal_text tool to summarize it.
+    - To summarize the case, first use the get_opinion_text to retrieve the full text and 
+      then use the summarize_legal_text tool to summarize it.
     - If a user wants to learn more about a case, you can provide them a link to the case record using the get_case_document_pdf tool.
       If this is unsuccessful, you can use the get_case_document_page tool. 
       The text displayed with this link should be the name_abbreviation of the case (DON'T just say the info can be found here).

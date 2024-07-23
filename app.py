@@ -153,7 +153,7 @@ def create_tools(cfg):
 
 def initialize_agent(_cfg):
     
-    legal_bot_instructions = """
+    legal_assistant_instructions = """
     - You are a helpful legal assistant, with expertise in case law for the state of Alaska.
     - If the user has a legal question that involves long and complex text, 
       break it down into sub-queries and use the ask_caselaw tool to answer each sub-question, 
@@ -168,6 +168,7 @@ def initialize_agent(_cfg):
     - If two cases have conflicting rulings, assume that the case with the more current ruling date is correct.
     - IMPORTANT: If the response is based on cases that are older than 5 years, make sure to inform the user that the information may be outdated,
       since some case opinions may no longer apply in law.
+    - To summarize the text of a case, first use the get_opinion_text to retrieve the full text and then use the summarize_legal_text tool to summarize it.
     - If a user wants to learn more about a case, you can provide them a link to the case record using the get_case_document_pdf tool.
       If this is unsuccessful, you can use the get_case_document_page tool. Don't call the get_case_document_page tool until after you have tried the get_case_document_pdf tool.
       Don't provide links from any other tools!
@@ -186,7 +187,7 @@ def initialize_agent(_cfg):
     agent = Agent(
         tools=create_tools(_cfg),
         topic="Case law in Alaska",
-        custom_instructions=legal_bot_instructions,
+        custom_instructions=legal_assistant_instructions,
         update_func=update_func
     )
 

@@ -62,7 +62,7 @@ def create_tools(cfg):
         res = json.loads(response.text)
         page_number = res["first_page_order"]
 
-        return f"static.case.law/{reporter}/{volume_num}.pdf#page={page_number}"
+        return f"https://static.case.law/{reporter}/{volume_num}.pdf#page={page_number}"
 
     def get_case_document_page(
             case_citation = Field(description = citation_description)

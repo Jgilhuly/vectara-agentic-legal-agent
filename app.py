@@ -4,6 +4,7 @@ from PIL import Image
 import sys
 import requests
 import json
+from typing import Tuple, List
 
 from omegaconf import OmegaConf
 import streamlit as st
@@ -77,14 +78,29 @@ def create_tools(cfg):
 
         return f"https://case.law/caselaw/?reporter={reporter}&volume={volume_num}&case={first_page:04d}-01"
         
+    def get_case_name(
+            case_citation = Field(description = citation_description)
+            ) -> Tuple[str, str]:
+        """
+        Given a case citation, returns its name and name abbreviation.
+        """
+        citation_components = case_citation.split()
+        volume_num = citation_components[0]
+        reporter = '-'.join(citation_components[1:-1]).replace('.', '').lower()
+        first_page = int(citation_components[-1])
+        response = requests.get(f"https://static.case.law/{reporter}/{volume_num}/cases/{first_page:04d}-01.json")
+        if response.status_code != 200:
+            return "Case not found", "Case not found"
+        res = json.loads(response.text)
+        return res["name"], res["name_abbreviation"]
+
     def get_cited_cases(
             case_citation = Field(description = citation_description)
-            ) -> str:
+            ) -> List[dict]:
         """
-        Given a case citation, returns a list of other cases that are cited by the opinion of this case.
-        The output is a list of case citations, separated by semicolons (;)
+        Given a case citation, returns a list of cases that are cited by the opinion of this case.
+        The output is a list of cases, each a dict with the citation, name and name_abbreviation of the case.
         """
-
         citation_components = case_citation.split()
         volume_num = citation_components[0]
         reporter = '-'.join(citation_components[1:-1]).replace('.', '').lower()
@@ -94,12 +110,15 @@ def create_tools(cfg):
         res = json.loads(response.text)
 
         citations = res["cites_to"]
-        other_citations = ""
-
-        for citation in citations[:5]:
-            other_citations += citation["cite"] + ';'
-
-        return other_citations
+        res = []
+        for citation in citations[:10]:
+            name, name_abbreviation = get_case_name(citation["cite"])
+            res.append({
+                "citation": citation["cite"],
+                "name": name,
+                "name_abbreviation": name_abbreviation
+            })
+        return res
 
     def validate_url(
             url = Field(description = "A web url pointing to case-law document")
@@ -143,6 +162,7 @@ def create_tools(cfg):
             get_case_document_pdf,
             get_case_document_page,
             get_cited_cases,
+            get_case_name,
             validate_url
         ]) + 
         tools_factory.standard_tools() + 
@@ -170,12 +190,13 @@ def initialize_agent(_cfg):
       since some case opinions may no longer apply in law.
     - To summarize the text of a case, first use the get_opinion_text to retrieve the full text and then use the summarize_legal_text tool to summarize it.
     - If a user wants to learn more about a case, you can provide them a link to the case record using the get_case_document_pdf tool.
-      If this is unsuccessful, you can use the get_case_document_page tool. Don't call the get_case_document_page tool until after you have tried the get_case_document_pdf tool.
+      If this is unsuccessful, you can use the get_case_document_page tool. 
+      The text displayed with this link should be the name_abbreviation of the case (DON'T just say the info can be found here).
+      Don't call the get_case_document_page tool until after you have tried the get_case_document_pdf tool.
       Don't provide links from any other tools!
-    - IMPORTANT: The displayed text for this link should be the name_abbreviation of the case (DON'T just say the info can be found here).
+    - When including a link in your response, make sure to validate the link using the validate_url tool.
     - If a user wants to test their argument, use the ask_caselaw tool to gather information about cases related to their argument 
       and the critique_as_judge tool to determine whether their argument is sound or has issues that must be corrected.
-    - When including a link in your response, make sure to validate the link using the validate_url tool.
     - Never discuss politics, and always respond politely.
     """
 
@@ -212,6 +233,7 @@ def launch_bot():
         st.session_state.thinking_message = "Agent at work..."
         st.session_state.log_messages = []
         st.session_state.prompt = None
+        st.session_state.ex_prompt = None
         st.session_state.first_turn = True
         st.session_state.show_logs = False
 
@@ -245,6 +267,7 @@ def launch_bot():
         with bc1:
             if st.button('Start Over'):
                 reset()
+                st.rerun()
 
         st.markdown("---")
         st.markdown(

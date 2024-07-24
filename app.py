@@ -24,12 +24,18 @@ citation_description = '''
     Citation must include the volume number, reporter, and first page. For example: 253 P.2d 136.
 '''
 
-def extract_components_from_citation(citation: str) -> bool:
-    citation_components = citation.split()
+def extract_components_from_citation(citation: str) -> Tuple[int, str, int]:
+    citation_components = citation.split(' ')
     volume_num = citation_components[0]
     reporter = '-'.join(citation_components[1:-1]).replace('.', '').lower()
-    first_page = int(citation_components[-1])
-    return volume_num, reporter, first_page
+    first_page = citation_components[-1]
+
+    if not volume_num.isdigit():
+        raise ValueError("volume number must be a number.")
+    if not first_page.isdigit():
+        raise ValueError("first page number must be a number.")
+
+    return int(volume_num), reporter, int(first_page)
 
 def create_tools(cfg):
 
@@ -119,15 +125,14 @@ def create_tools(cfg):
 
     def validate_url(
             url = Field(description = "A web url pointing to case-law document")
-        ) -> bool:
+        ) -> str:
         """
         Given a link, returns whether or not the link is valid.
         If it is not valid, it should not be used in any output.
         """  
-
         pdf_pattern = re.compile(r'^https://static.case.law/.*')
         document_pattern = re.compile(r'^https://case.law/caselaw/?reporter=.*')
-        return bool(pdf_pattern.match(url)) | bool(document_pattern.match(url))
+        return "URL is valid" if bool(pdf_pattern.match(url)) | bool(document_pattern.match(url)) else "URL is bad"
 
     class QueryCaselawArgs(BaseModel):
         query: str = Field(..., description="The user query.")
@@ -185,19 +190,19 @@ def initialize_agent(_cfg):
     - Citations include 3 components: volume number, reporter, and first page. 
       Here are some examples: '253 P.2d 136', '10 Alaska 11', '6 C.M.A. 3'
       Never use your internal knowledge to contruct or guess what the citation is.
-    - IMPORTANT: The ask_caselaw tool is your primary tools for finding information about cases. 
+    - The ask_caselaw tool is your primary tools for finding information about cases. 
       Do not use your own knowledge to answer questions.
     - If two cases have conflicting rulings, assume that the case with the more current ruling date is correct.
-    - IMPORTANT: If the response is based on cases that are older than 5 years, make sure to inform the user that the information may be outdated,
+    - If the response is based on cases that are older than 5 years, make sure to inform the user that the information may be outdated,
       since some case opinions may no longer apply in law.
-    - To summarize the case, first use the get_opinion_text to retrieve the full text and 
-      then use the summarize_legal_text tool to summarize it.
-    - If a user wants to learn more about a case, you can provide them a link to the case record using the get_case_document_pdf tool.
-      If this is unsuccessful, you can use the get_case_document_page tool. 
-      The text displayed with this link should be the name_abbreviation of the case (DON'T just say the info can be found here).
+    - To summarize the case, first use the get_opinion_text to retrieve the full opinion text, 
+      and pass the full text output to the summarize_legal_text tool.
+    - If a user wants to learn more about a case, you can call the get_case_document_pdf tool with the citation to get a valid URL.
+      If this is unsuccessful, call the get_case_document_page tool instead. 
+      The text displayed with this URL should be the name_abbreviation of the case (DON'T just say the info can be found here).
       Don't call the get_case_document_page tool until after you have tried the get_case_document_pdf tool.
-      Don't provide links from any other tools!
-    - When including a link in your response, make sure to validate the link using the validate_url tool.
+      Don't provide URLs from any other tools. Do not generate URLs yourself.
+      Always construct URLs from citations and validate every URL using the validate_url tool.
     - If a user wants to test their argument, use the ask_caselaw tool to gather information about cases related to their argument 
       and the critique_as_judge tool to determine whether their argument is sound or has issues that must be corrected.
     - Never discuss politics, and always respond politely.

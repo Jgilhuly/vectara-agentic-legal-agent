@@ -14,6 +14,7 @@ from typing import Optional
 from pydantic import Field, BaseModel
 from vectara_agent.agent import Agent, AgentStatusType
 from vectara_agent.tools import ToolsFactory
+from vectara_agent.tools_catalog import summarize_text
 
 from dotenv import load_dotenv
 load_dotenv(override=True)
@@ -40,11 +41,14 @@ def extract_components_from_citation(citation: str) -> Tuple[int, str, int]:
 def create_tools(cfg):
 
     def get_opinion_text(
-            case_citation = Field(description = citation_description)
+            case_citation = Field(description = citation_description),
+            summarize: Optional[bool] = False
             ) -> str:
         """
         Given case citation, returns the full opinion/ruling text of the case.
-        If there is more than one opinion for the case, the type of each opinion is returned with the text, and the opinions are separated by semicolons (;)
+        if summarize is True, the text is summarized.
+        If there is more than one opinion for the case, the type of each opinion is returned with the text, 
+        and the opinions (or their summaries) are separated by semicolons (;)
         """
         volume_num, reporter, first_page = extract_components_from_citation(case_citation)
         response = requests.get(f"https://static.case.law/{reporter}/{volume_num}/cases/{first_page:04d}-01.json")
@@ -53,12 +57,15 @@ def create_tools(cfg):
         res = json.loads(response.text)
 
         if len(res["casebody"]["opinions"]) == 1:
-            return res["casebody"]["opinions"][0]["text"]
+            text = res["casebody"]["opinions"][0]["text"]
+            output = text if not summarize else summarize_text(text, "law")
         else:
-            opinions = ""
+            output = ""
             for opinion in res["casebody"]["opinions"]:
-                opinions += f"Opinion type: {opinion['type']}, text: {opinion['text']};"
-            return opinions
+                text = opinion["text"] if not summarize else summarize_text(opinion["text"], "law")
+                output += f"Opinion type: {opinion['type']}, text: {text};"
+        
+        return output
 
     def get_case_document_pdf(
             case_citation = Field(description = citation_description)
@@ -195,8 +202,7 @@ def initialize_agent(_cfg):
     - If two cases have conflicting rulings, assume that the case with the more current ruling date is correct.
     - If the response is based on cases that are older than 5 years, make sure to inform the user that the information may be outdated,
       since some case opinions may no longer apply in law.
-    - To summarize the case, first use the get_opinion_text to retrieve the full opinion text, 
-      and pass the full text output to the summarize_legal_text tool.
+    - To summarize the case, use the get_opinion_text with summarize set to True.
     - If a user wants to learn more about a case, you can call the get_case_document_pdf tool with the citation to get a valid URL.
       If this is unsuccessful, call the get_case_document_page tool instead. 
       The text displayed with this URL should be the name_abbreviation of the case (DON'T just say the info can be found here).

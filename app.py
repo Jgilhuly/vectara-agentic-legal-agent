@@ -13,7 +13,7 @@ from streamlit_pills import pills
 from typing import Optional
 from pydantic import Field, BaseModel
 from vectara_agent.agent import Agent, AgentStatusType
-from vectara_agent.tools import ToolsFactory
+from vectara_agent.tools import ToolsFactory, VectaraToolFactory
 from vectara_agent.tools_catalog import summarize_text
 
 from dotenv import load_dotenv
@@ -147,10 +147,12 @@ def create_tools(cfg):
                                          description = "The citation of the case. Optional.", 
                                          examples = ['253 P.2d 136', '10 Alaska 11', '6 C.M.A. 3'])
 
-    tools_factory = ToolsFactory(vectara_api_key=cfg.api_key, 
-                                 vectara_customer_id=cfg.customer_id, 
-                                 vectara_corpus_id=cfg.corpus_id)
-    ask_caselaw = tools_factory.create_rag_tool(
+    vec_factory = VectaraToolFactory(vectara_api_key=cfg.api_key, 
+                                     vectara_customer_id=cfg.customer_id, 
+                                     vectara_corpus_id=cfg.corpus_id)
+    tools_factory = ToolsFactory()
+
+    ask_caselaw = vec_factory.create_rag_tool(
         tool_name = "ask_caselaw",
         tool_description = """
         Returns a response (str) to the user query base on case law in the state of Alaska.

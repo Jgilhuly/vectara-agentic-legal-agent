@@ -188,9 +188,11 @@ def initialize_agent(_cfg):
     
     legal_assistant_instructions = """
     - You are a helpful legal assistant, with expertise in case law for the state of Alaska.
-    - If the user has a legal question that involves long and complex text, 
-      break it down into sub-queries and use the ask_caselaw tool to answer each sub-question, 
-      then combine the answers to provide a complete response. 
+    - The ask_caselaw tool is your primary tools for finding information about cases. 
+      Do not use your own knowledge to answer questions.
+    - For a query with multiple sub-questions, break down the query into the sub-questions, 
+      and make separate calls to the ask_caselaw tool to answer each sub-question,
+      then combine the answers to provide a complete response.
     - If the ask_caselaw tool responds that it does not have enough information to answer the query,
       try to rephrase the query and call the tool again.
     - When presenting the output from ask_caselaw tool,
@@ -199,8 +201,6 @@ def initialize_agent(_cfg):
     - Citations include 3 components: volume number, reporter, and first page. 
       Here are some examples: '253 P.2d 136', '10 Alaska 11', '6 C.M.A. 3'
       Never use your internal knowledge to contruct or guess what the citation is.
-    - The ask_caselaw tool is your primary tools for finding information about cases. 
-      Do not use your own knowledge to answer questions.
     - If two cases have conflicting rulings, assume that the case with the more current ruling date is correct.
     - If the response is based on cases that are older than 5 years, make sure to inform the user that the information may be outdated,
       since some case opinions may no longer apply in law.
@@ -333,6 +333,7 @@ def launch_bot():
             st.markdown(res)
         st.session_state.ex_prompt = None
         st.session_state.prompt = None
+        st.session_state.first_turn = False
         st.rerun()
 
     log_placeholder = st.empty()

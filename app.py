@@ -38,7 +38,7 @@ def extract_components_from_citation(citation: str) -> Tuple[int, str, int]:
 
     return int(volume_num), reporter, int(first_page)
 
-def create_tools(cfg):
+def create_assistant_tools(cfg):
 
     def get_opinion_text(
             case_citation = Field(description = citation_description),
@@ -170,14 +170,15 @@ def create_tools(cfg):
         include_citations = False,
     )
 
-    return (tools_factory.get_tools([
+    return (
+        [tools_factory.create_tool(tool) for tool in [
             get_opinion_text,
             get_case_document_pdf,
             get_case_document_page,
             get_cited_cases,
             get_case_name,
             validate_url
-        ]) + 
+        ]] + 
         tools_factory.standard_tools() + 
         tools_factory.legal_tools() + 
         tools_factory.guardrail_tools() +
@@ -210,7 +211,7 @@ def initialize_agent(_cfg):
       The text displayed with this URL should be the name_abbreviation of the case (DON'T just say the info can be found here).
       Don't call the get_case_document_page tool until after you have tried the get_case_document_pdf tool.
       Don't provide URLs from any other tools. Do not generate URLs yourself.
-      Always construct URLs from citations and validate every URL using the validate_url tool.
+    - When presenting a URL in your response, use the validate_url tool.
     - If a user wants to test their argument, use the ask_caselaw tool to gather information about cases related to their argument 
       and the critique_as_judge tool to determine whether their argument is sound or has issues that must be corrected.
     - Never discuss politics, and always respond politely.
@@ -222,7 +223,7 @@ def initialize_agent(_cfg):
             st.session_state.log_messages.append(output)
 
     agent = Agent(
-        tools=create_tools(_cfg),
+        tools=create_assistant_tools(_cfg),
         topic="Case law in Alaska",
         custom_instructions=legal_assistant_instructions,
         update_func=update_func

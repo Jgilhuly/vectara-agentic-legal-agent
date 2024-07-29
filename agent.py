@@ -187,7 +187,6 @@ def get_agent_config() -> OmegaConf:
         'corpus_id': str(os.environ['VECTARA_CORPUS_ID']),
         'api_key': str(os.environ['VECTARA_API_KEY']),
         'examples': os.environ.get('QUERY_EXAMPLES', None),
-        'title': "Legal Assistant",
         'demo_welcome': "Welcome to the Legal Assistant demo.",
         'demo_description': "This demo can help you prepare for a court case by providing you information about past court cases in Alaska.",
     })

@@ -128,4 +128,5 @@ def launch_bot():
     sys.stdout.flush()
 
 if __name__ == "__main__":
+    st.set_page_config(page_title="Legal Assistant", layout="wide")
     launch_bot()

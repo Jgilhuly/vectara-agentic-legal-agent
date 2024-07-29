@@ -4,7 +4,7 @@ import os
 from omegaconf import OmegaConf
 from vectara_agent.agent import Agent
 
-from app import initialize_agent
+from agent import initialize_agent
 
 from dotenv import load_dotenv
 load_dotenv(override=True)

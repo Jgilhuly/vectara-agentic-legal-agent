@@ -5,7 +5,6 @@ colorFrom: indigo
 colorTo: indigo
 sdk: docker
 app_port: 8501
-app_file: app.py
 pinned: false
 license: apache-2.0
 short_description: Legal Assistant using vectara-agent

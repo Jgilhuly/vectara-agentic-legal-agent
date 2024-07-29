@@ -48,7 +48,6 @@ def launch_bot():
         reset()
 
     cfg = st.session_state.cfg
-    st.set_page_config(page_title=cfg['title'], layout="wide")
 
     # left side content
     with st.sidebar:

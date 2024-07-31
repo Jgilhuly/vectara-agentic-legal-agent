@@ -13,6 +13,9 @@ from vectara_agent.agent import AgentStatusType
 
 from agent import initialize_agent, get_agent_config
 
+
+initial_prompt = "How can I help you today?"
+
 # Setup for HTTP API Calls to Amplitude Analytics
 if 'device_id' not in st.session_state:
     st.session_state.device_id = str(uuid.uuid4())
@@ -48,8 +51,6 @@ def thumbs_feedback(feedback, **kwargs):
 
 if "feedback_key" not in st.session_state:
         st.session_state.feedback_key = 0
-
-initial_prompt = "How can I help you today?"
 
 def toggle_logs():
     st.session_state.show_logs = not st.session_state.show_logs

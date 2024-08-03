@@ -1,9 +1,7 @@
 from PIL import Image
 import sys
-import os
-import requests
-import json
 import uuid
+
 
 import streamlit as st
 from streamlit_pills import pills
@@ -12,42 +10,13 @@ from streamlit_feedback import streamlit_feedback
 from vectara_agent.agent import AgentStatusType
 
 from agent import initialize_agent, get_agent_config
-
+from utils import thumbs_feedback, escape_dollars_outside_latex, send_amplitude_data
 
 initial_prompt = "How can I help you today?"
 
 # Setup for HTTP API Calls to Amplitude Analytics
 if 'device_id' not in st.session_state:
     st.session_state.device_id = str(uuid.uuid4())
-
-headers = {
-    'Content-Type': 'application/json',
-    'Accept': '*/*'
-}
-amp_api_key = os.getenv('AMPLITUDE_TOKEN')
-
-def thumbs_feedback(feedback, **kwargs):
-    """
-    Sends feedback to Amplitude Analytics
-    """
-    data = {
-            "api_key": amp_api_key,
-            "events": [{
-                "device_id": st.session_state.device_id,
-                "event_type": "provided_feedback",
-                "event_properties": {
-                    "Space Name": kwargs.get("demo_name", "Unknown"),
-                    "query": kwargs.get("prompt", "No user input"),
-                    "response": kwargs.get("response", "No chat response"),
-                    "feedback": feedback["score"]
-                }
-            }]
-        }
-    response = requests.post('https://api2.amplitude.com/2/httpapi', headers=headers, data=json.dumps(data))
-    if response.status_code != 200:
-        print(f"Request failed with status code {response.status_code}. Response Text: {response.text}")
-    
-    st.session_state.feedback_key += 1
 
 if "feedback_key" not in st.session_state:
         st.session_state.feedback_key = 0
@@ -105,7 +74,7 @@ def launch_bot():
                 reset()
                 st.rerun()
 
-        st.markdown("---")
+        st.divider()
         st.markdown(
             "## How this works?\n"
             "This app was built with [Vectara](https://vectara.com).\n\n"
@@ -147,32 +116,30 @@ def launch_bot():
         with st.chat_message("assistant", avatar='🤖'):
             with st.spinner(st.session_state.thinking_message):
                 res = st.session_state.agent.chat(st.session_state.prompt)
-                res = res.replace('$', '\\$')  # escape dollar sign for markdown
+                res = escape_dollars_outside_latex(res)
             message = {"role": "assistant", "content": res, "avatar": '🤖'}
             st.session_state.messages.append(message)
             st.markdown(res)
 
-        # Send query and response to Amplitude Analytics
-        data = {
-            "api_key": amp_api_key,
-            "events": [{
-                "device_id": st.session_state.device_id,
-                "event_type": "submitted_query",
-                "event_properties": {
-                    "Space Name": cfg['demo_name'],
-                    "query": st.session_state.messages[-2]["content"],
-                    "response": st.session_state.messages[-1]["content"]
-                }
-            }]
-        }
-        response = requests.post('https://api2.amplitude.com/2/httpapi', headers=headers, data=json.dumps(data))
-        if response.status_code != 200:
-            print(f"Request failed with status code {response.status_code}. Response Text: {response.text}")
+        send_amplitude_data(
+            user_query=st.session_state.messages[-2]["content"], 
+            bot_response=st.session_state.messages[-1]["content"],
+            demo_name=cfg['demo_name']
+        )
 
         st.session_state.ex_prompt = None
         st.session_state.prompt = None
         st.session_state.first_turn = False
         st.rerun()
+
+    # Record user feedback
+    if (st.session_state.messages[-1]["role"] == "assistant") & (st.session_state.messages[-1]["content"] != "How can I help you today?"):
+        streamlit_feedback(
+            feedback_type="thumbs", on_submit = thumbs_feedback, key = st.session_state.feedback_key,
+            kwargs = {"user_query": st.session_state.messages[-2]["content"],
+                      "bot_response": st.session_state.messages[-1]["content"],
+                      "demo_name": cfg["demo_name"]}
+        )
 
     log_placeholder = st.empty()
     with log_placeholder.container():
@@ -185,13 +152,6 @@ def launch_bot():
                 st.button("Show Logs", on_click=toggle_logs)
 
     sys.stdout.flush()
-
-    # Record user feedback
-    if (st.session_state.messages[-1]["role"] == "assistant") & (st.session_state.messages[-1]["content"] != "How can I help you today?"):
-        streamlit_feedback(feedback_type="thumbs", on_submit = thumbs_feedback, key = st.session_state.feedback_key,
-                                      kwargs = {"prompt": st.session_state.messages[-2]["content"],
-                                                "response": st.session_state.messages[-1]["content"],
-                                                "demo_name": cfg["demo_name"]})
 
 if __name__ == "__main__":
     st.set_page_config(page_title="Legal Assistant", layout="wide")

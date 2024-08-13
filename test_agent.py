@@ -2,7 +2,7 @@ import unittest
 import os
 
 from omegaconf import OmegaConf
-from vectara_agent.agent import Agent
+from vectara_agentic.agent import Agent
 
 from agent import initialize_agent
 

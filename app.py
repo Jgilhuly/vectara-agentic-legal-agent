@@ -7,7 +7,7 @@ import streamlit as st
 from streamlit_pills import pills
 from streamlit_feedback import streamlit_feedback
 
-from vectara_agent.agent import AgentStatusType
+from vectara_agentic.agent import AgentStatusType
 
 from agent import initialize_agent, get_agent_config
 from utils import thumbs_feedback, escape_dollars_outside_latex, send_amplitude_data

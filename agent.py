@@ -9,9 +9,9 @@ from omegaconf import OmegaConf
 from typing import Optional
 from pydantic import Field, BaseModel
 
-from vectara_agent.agent import Agent
-from vectara_agent.tools import ToolsFactory, VectaraToolFactory
-from vectara_agent.tools_catalog import summarize_text
+from vectara_agentic.agent import Agent
+from vectara_agentic.tools import ToolsFactory, VectaraToolFactory
+from vectara_agentic.tools_catalog import summarize_text
 
 from dotenv import load_dotenv
 load_dotenv(override=True)

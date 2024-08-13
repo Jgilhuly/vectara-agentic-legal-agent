@@ -1,5 +1,5 @@
 ---
-title: Case Law Assistant
+title: Legal Assistant
 emoji: 🐨
 colorFrom: indigo
 colorTo: indigo

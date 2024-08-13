@@ -3,10 +3,6 @@ FROM python:3.10
 WORKDIR /app
 
 COPY ./requirements.txt /app/requirements.txt
-
-RUN --mount=type=secret,id=GITHUB_TOKEN,mode=0444,required=true \
-    if [ -z "$(cat /run/secrets/GITHUB_TOKEN)" ]; then echo "GITHUB_TOKEN is not set"; exit 1; fi && \
-    sed -i "s/{GITHUB_TOKEN}/$(cat /run/secrets/GITHUB_TOKEN)/g" /app/requirements.txt
     
 RUN pip3 install --no-cache-dir -r /app/requirements.txt
 

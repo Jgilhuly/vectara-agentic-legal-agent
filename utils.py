@@ -53,9 +53,9 @@ def send_amplitude_data(user_query, bot_response, demo_name, feedback=None):
         print(f"Amplitude request failed with status code {response.status_code}. Response Text: {response.text}")
 
 def escape_dollars_outside_latex(text):
-    # Define a regex pattern to find LaTeX equations (either single $ or double $$)
-    pattern = re.compile(r'(\$\$.*?\$\$|\$.*?\$)')
-    latex_matches = pattern.findall(text)
+    # Define a regex pattern to find LaTeX equations (double $$ only)
+    pattern = r'\$\$.*?\$\$'
+    latex_matches = re.findall(pattern, text, re.DOTALL)
     
     # Placeholder to temporarily store LaTeX equations
     placeholders = {}

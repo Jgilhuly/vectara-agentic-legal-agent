@@ -226,7 +226,8 @@ def initialize_agent(_cfg, update_func=None):
         tools=create_assistant_tools(_cfg),
         topic="Case law in Alaska",
         custom_instructions=legal_assistant_instructions,
-        update_func=update_func
+        update_func=update_func,
+        verbose=True
     )
 
     return agent

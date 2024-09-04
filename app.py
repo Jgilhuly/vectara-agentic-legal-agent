@@ -2,6 +2,8 @@ from PIL import Image
 import sys
 import uuid
 
+import nest_asyncio
+import asyncio
 
 import streamlit as st
 from streamlit_pills import pills
@@ -38,7 +40,7 @@ def update_func(status_type: AgentStatusType, msg: str):
         output = f"{status_type.value} - {msg}"
         st.session_state.log_messages.append(output)
 
-def launch_bot():
+async def launch_bot():
     def reset():
         st.session_state.messages = [{"role": "assistant", "content": initial_prompt, "avatar": "🦖"}]
         st.session_state.thinking_message = "Agent at work..."
@@ -155,4 +157,5 @@ def launch_bot():
 
 if __name__ == "__main__":
     st.set_page_config(page_title="Legal Assistant", layout="wide")
-    launch_bot()
+    nest_asyncio.apply()
+    asyncio.run(launch_bot())

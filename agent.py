@@ -140,7 +140,7 @@ def create_assistant_tools(cfg):
     class QueryCaselawArgs(BaseModel):
         query: str = Field(..., description="The user query.")
         citations: Optional[str] = Field(default = None, 
-                                         description = "The citation of the case. Optional.", 
+                                         description = "The citations of the case. Optional.",
                                          examples = ['253 P.2d 136', '10 Alaska 11', '6 C.M.A. 3'])
 
     vec_factory = VectaraToolFactory(vectara_api_key=cfg.api_key, 
@@ -151,12 +151,9 @@ def create_assistant_tools(cfg):
     ask_caselaw = vec_factory.create_rag_tool(
         tool_name = "ask_caselaw",
         tool_description = """
+        Use this tool for general case law queries.
         Returns a response (str) to the user query base on case law in the state of Alaska.
         If 'citations' is provided, filters the response based on information from that case.
-        The response includes metadata about the case such as title/name the ruling, the court, 
-        the decision date, the judges, and the case citation. 
-        You can use case citations from the metadata as input to other tools.
-        Use this tool for general case law queries.
         """,
         tool_args_schema = QueryCaselawArgs,
         reranker = "multilingual_reranker_v1", rerank_k = 100, 

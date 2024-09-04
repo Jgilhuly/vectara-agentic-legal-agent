@@ -5,6 +5,8 @@ WORKDIR /app
 COPY ./requirements.txt /app/requirements.txt
     
 RUN pip3 install --no-cache-dir -r /app/requirements.txt
+RUN pip3 install nltk
+RUN python3 -m nltk.downloader punkt
 
 # User
 RUN useradd -m -u 1000 user

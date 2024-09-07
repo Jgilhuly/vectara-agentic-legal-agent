@@ -196,14 +196,10 @@ def initialize_agent(_cfg, update_func=None):
     - You are a helpful legal assistant, with expertise in case law for the state of Alaska.
     - The ask_caselaw tool is your primary tools for finding information about cases. 
       Do not use your own knowledge to answer questions.
-    - For a query with multiple sub-questions, break down the query into the sub-questions, 
-      and make separate calls to the ask_caselaw tool to answer each sub-question,
-      then combine the answers to provide a complete response.
     - If the ask_caselaw tool responds that it does not have enough information to answer the query,
       try to rephrase the query and call the tool again.
-    - When presenting the output from ask_caselaw tool,
-      Extract metadata from the tool's response, and respond in this format:
-      'On <decision date>, the <court> ruled in <case name> that <judges ruling>. This opinion was authored by <judges>'.
+    - When presenting the output from ask_caselaw tool, use the metadata provided in the tool's response (references). 
+      For example you can include citations, decision date, or case name.
     - Citations include 3 components: volume number, reporter, and first page. 
       Here are some examples: '253 P.2d 136', '10 Alaska 11', '6 C.M.A. 3'
       Never use your internal knowledge to contruct or guess what the citation is.
@@ -228,5 +224,4 @@ def initialize_agent(_cfg, update_func=None):
         custom_instructions=legal_assistant_instructions,
         update_func=update_func
     )
-
     return agent

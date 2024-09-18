@@ -56,7 +56,7 @@ async def launch_bot():
         cfg = get_agent_config()
         st.session_state.cfg = cfg
         st.session_state.ex_prompt = None
-        example_messages = [example.strip() for example in cfg.examples.split(",")] if cfg.examples else []
+        example_messages = [example.strip() for example in cfg.examples.split(";")] if cfg.examples else []
         st.session_state.example_messages = [em for em in example_messages if len(em)>0]
         reset()
 

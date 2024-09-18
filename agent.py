@@ -164,6 +164,7 @@ def create_assistant_tools(cfg):
     )
 
     return (
+        [ask_caselaw] +
         [tools_factory.create_tool(tool) for tool in [
             get_opinion_text,
             get_case_document_pdf,
@@ -173,9 +174,7 @@ def create_assistant_tools(cfg):
             validate_url
         ]] + 
         tools_factory.standard_tools() + 
-        tools_factory.legal_tools() + 
-        tools_factory.guardrail_tools() +
-        [ask_caselaw]
+        tools_factory.legal_tools()
     )
 
 def get_agent_config() -> OmegaConf:

@@ -156,10 +156,10 @@ def create_assistant_tools(cfg):
         If 'citations' is provided, filters the response based on information from that case.
         """,
         tool_args_schema = QueryCaselawArgs,
-        reranker = "multilingual_reranker_v1", rerank_k = 100, 
+        # reranker = "multilingual_reranker_v1", rerank_k = 100, 
         n_sentences_before = 2, n_sentences_after = 2, lambda_val = 0.0,
         summary_num_results = 10,
-        vectara_summarizer = 'vectara-summary-ext-24-05-med-omni',
+        # vectara_summarizer = 'vectara-summary-ext-24-05-med-omni',
         include_citations = False,
     )
 

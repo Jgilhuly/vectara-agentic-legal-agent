@@ -1,7 +1,7 @@
 from PIL import Image
 import sys
 import uuid
-
+import os
 import nest_asyncio
 import asyncio
 
@@ -9,12 +9,16 @@ import streamlit as st
 from streamlit_pills import pills
 from streamlit_feedback import streamlit_feedback
 
+from phoenix.otel import register
+from openinference.instrumentation.llama_index import LlamaIndexInstrumentor
+
 from vectara_agentic.agent import AgentStatusType
 
 from agent import initialize_agent, get_agent_config
 from utils import thumbs_feedback, escape_dollars_outside_latex, send_amplitude_data
 
 initial_prompt = "How can I help you today?"
+instrumented = False
 
 # Setup for HTTP API Calls to Amplitude Analytics
 if 'device_id' not in st.session_state:
@@ -157,5 +161,11 @@ async def launch_bot():
 
 if __name__ == "__main__":
     st.set_page_config(page_title="Legal Assistant", layout="wide")
+    
+    if not instrumented:
+        tracer_provider = register(endpoint=os.getenv("PHOENIX_ENDPOINT"), project_name="vectara-agentic")
+        LlamaIndexInstrumentor().instrument(tracer_provider=tracer_provider)
+        instrumented = True
+    
     nest_asyncio.apply()
     asyncio.run(launch_bot())

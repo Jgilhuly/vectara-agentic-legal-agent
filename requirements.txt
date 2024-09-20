@@ -7,3 +7,5 @@ uuid==1.30
 langdetect==1.0.9
 langcodes==3.4.0
 vectara-agentic==0.1.8
+arize-phoenix==4.35.1
+openinference-instrumentation-llama-index==3.0.2
